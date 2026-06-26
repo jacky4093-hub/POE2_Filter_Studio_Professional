@@ -1,0 +1,8 @@
+[project]
+name = "poe2-filter-studio-professional"
+version = "3.0.0"
+description = "POE2 Filter Studio Professional"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
