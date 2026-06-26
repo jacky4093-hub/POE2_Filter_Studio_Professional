@@ -110,6 +110,18 @@ class FilterDocument:
     def can_redo(self) -> bool:
         return bool(self._redo_stack)
 
+    def peek_undo_command(self):
+        """Return the command that would be undone next, or None.
+        Does not modify the stack.
+        """
+        return self._undo_stack[-1] if self._undo_stack else None
+
+    def peek_redo_command(self):
+        """Return the command that would be redone next, or None.
+        Does not modify the stack.
+        """
+        return self._redo_stack[-1] if self._redo_stack else None
+
     # ------------------------------------------------------------------
     # Rule mutation primitives
     # (Called by Command objects — UI layer must use execute() instead.)
@@ -134,6 +146,33 @@ class FilterDocument:
 
     def update_rule(self, index: int, rule: FilterRule) -> None:
         self._rules[index] = rule
+        self._dirty = True
+
+    def move_rule(self, from_index: int, to_index: int) -> None:
+        """Move rule at from_index to to_index.
+
+        __TAIL__ protection (all violations are silently ignored):
+          - Cannot move the __TAIL__ sentinel (from_index pointing to it)
+          - to_index is clamped to stay before __TAIL__
+          - from_index == to_index after clamping → no-op
+        """
+        n = len(self._rules)
+        if n == 0:
+            return
+        has_tail = self._rules[-1].action == "__TAIL__"
+        max_real = n - 1 if has_tail else n   # valid real indices: [0, max_real)
+
+        if not (0 <= from_index < max_real):
+            return
+        if self._rules[from_index].action == "__TAIL__":
+            return
+
+        to_index = max(0, min(to_index, max_real - 1))
+        if from_index == to_index:
+            return
+
+        rule = self._rules.pop(from_index)
+        self._rules.insert(to_index, rule)
         self._dirty = True
 
     # ------------------------------------------------------------------

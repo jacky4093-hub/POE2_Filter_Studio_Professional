@@ -13,6 +13,7 @@ from core.models import FilterRule
 from core.commands import (
     AddRuleCommand, DeleteRuleCommand,
     DuplicateRuleCommand, UpdateRuleCommand,
+    MoveRuleCommand,
 )
 from widgets.rule_list import RuleListWidget
 from editor.rule_editor import RuleEditorWidget
@@ -65,6 +66,7 @@ class MainWindow(QMainWindow):
         self.rule_list.add_rule_requested.connect(self._on_add_rule)
         self.rule_list.delete_rule_requested.connect(self._on_delete_rule)
         self.rule_list.copy_rule_requested.connect(self._on_copy_rule)
+        self.rule_list.move_rule_requested.connect(self._on_move_rule)
         self.rule_editor.rule_changed.connect(self._on_rule_changed)
 
     def _build_menus(self):
@@ -203,11 +205,21 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _on_undo(self):
+        # Peek BEFORE undoing to know which command ran, so we can track
+        # selection correctly for MoveRuleCommand (its indices shift).
+        last_cmd = self._doc.peek_undo_command()
         self._doc.undo()
+        if isinstance(last_cmd, MoveRuleCommand) and not last_cmd.is_noop:
+            # After undo, the moved rule is back at from_index
+            self._selected_index = last_cmd.from_index
         self._refresh_after_undo_redo()
 
     def _on_redo(self):
+        last_cmd = self._doc.peek_redo_command()
         self._doc.redo()
+        if isinstance(last_cmd, MoveRuleCommand) and not last_cmd.is_noop:
+            # After redo, the moved rule is again at to_index
+            self._selected_index = last_cmd.to_index
         self._refresh_after_undo_redo()
 
     def _refresh_after_undo_redo(self):
@@ -302,6 +314,23 @@ class MainWindow(QMainWindow):
         self._editing_snapshot = None
         self.rule_list.load_rules(self._doc.rules)
         self.rule_editor.setEnabled(False)
+        self._refresh_status()
+        self._refresh_undo_actions()
+
+    def _on_move_rule(self, from_real: int, to_real: int):
+        """Handle drag-and-drop reorder from RuleListWidget."""
+        cmd = MoveRuleCommand(self._doc, from_real, to_real)
+        if cmd.is_noop:
+            return
+
+        self._doc.execute(cmd)
+
+        # Follow the dragged rule to its new position
+        self._selected_index   = cmd.to_index
+        self._editing_snapshot = copy.deepcopy(self._doc.rules[cmd.to_index])
+        self.rule_list.load_rules(self._doc.rules)
+        self.rule_list.select_real_index(cmd.to_index)
+        self.rule_editor.load_rule(self._doc.rules[cmd.to_index])
         self._refresh_status()
         self._refresh_undo_actions()
 

@@ -165,24 +165,61 @@ class UpdateRuleCommand(AbstractCommand):
 
 
 # ---------------------------------------------------------------------------
-# MoveRuleCommand  (reserved for v0.6.0 Drag & Drop)
+# MoveRuleCommand  (v0.6.0 Drag & Drop)
 # ---------------------------------------------------------------------------
 
 class MoveRuleCommand(AbstractCommand):
-    """Reserved — not yet implemented."""
+    """Move a rule from from_index to to_index.
 
-    description = "移動規則（預留）"
+    Index normalization is applied at construction time:
+      - to_index is clamped to valid range (always before __TAIL__)
+      - from_index == to_index after normalization  → is_noop
+      - out-of-bounds from_index                    → is_noop (no exception)
+      - only one movable rule exists                → is_noop
+
+    undo() is the exact reverse: move_rule(to_index, from_index).
+    This is safe because undo/redo always runs in stack order.
+    """
 
     def __init__(self, doc: "FilterDocument", from_index: int, to_index: int):
-        self._doc        = doc
+        self._doc = doc
+        n        = len(doc.rules)
+        has_tail = n > 0 and doc.rules[-1].action == "__TAIL__"
+        max_real = n - 1 if has_tail else n   # valid range: [0, max_real)
+
         self._from_index = from_index
-        self._to_index   = to_index
+        # Clamp to_index to valid normal-rule range
+        self._to_index = max(0, min(to_index, max_real - 1)) if max_real > 0 else 0
+
+        self._is_noop = (
+            max_real <= 1
+            or not (0 <= from_index < max_real)
+            or self._from_index == self._to_index
+        )
+        self.description = f"移動規則 [{from_index}] → [{to_index}]"
 
     def execute(self) -> None:
-        raise NotImplementedError("MoveRuleCommand not yet implemented")
+        if not self._is_noop:
+            self._doc.move_rule(self._from_index, self._to_index)
 
     def undo(self) -> None:
-        raise NotImplementedError("MoveRuleCommand not yet implemented")
+        if not self._is_noop:
+            self._doc.move_rule(self._to_index, self._from_index)
+
+    def redo(self) -> None:
+        self.execute()
+
+    @property
+    def from_index(self) -> int:
+        return self._from_index
+
+    @property
+    def to_index(self) -> int:
+        return self._to_index
+
+    @property
+    def is_noop(self) -> bool:
+        return self._is_noop
 
 
 # ---------------------------------------------------------------------------
