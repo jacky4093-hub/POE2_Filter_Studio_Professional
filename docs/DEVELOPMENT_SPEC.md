@@ -78,9 +78,10 @@
 | v0.1.0 | ✅ 完成 | MVP：開啟、解析、編輯、儲存、Rule 增刪複製 |
 | v0.2.0 | ✅ 完成 | FilterDocument 架構層、改善 Rule List 顯示 |
 | v0.2.1 | ✅ 完成 | 新增開發規範文件 |
-| v0.3.0 | 規劃中 | Professional Rule Editor（Property Grid 風格） |
-| v0.4.0 | 規劃中 | Undo / Redo Command Pattern |
-| v0.5.0 | 規劃中 | Drag & Drop Rule Ordering |
+| v0.3.0 | ✅ 完成 | Professional Rule Editor（Property Grid 風格） |
+| v0.4.0 | ✅ 完成 | Professional Property System（Registry + ValidationResult + CollapsibleSection） |
+| v0.5.0 | 規劃中 | Undo / Redo Command Pattern |
+| v0.6.0 | 規劃中 | Drag & Drop Rule Ordering |
 | v0.6.0 | 規劃中 | Preview Engine（模擬物品掉落顯示） |
 | v0.7.0 | 規劃中 | Search / Filter / Goto Rule |
 | v0.8.0 | 規劃中 | POE2 Item Database + 中文搜尋 |
