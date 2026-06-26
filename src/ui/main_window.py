@@ -17,6 +17,7 @@ from core.commands import (
 )
 from widgets.rule_list import RuleListWidget
 from editor.rule_editor import RuleEditorWidget
+from ui.preview_panel import PreviewPanel
 
 
 class MainWindow(QMainWindow):
@@ -24,10 +25,10 @@ class MainWindow(QMainWindow):
         super().__init__()
         self._doc = FilterDocument()
         self._selected_index: int = -1
-        self._editing_snapshot: FilterRule | None = None   # deep-copy taken at load_rule time
+        self._editing_snapshot: FilterRule | None = None   # deep-copy taken at load time
 
         self.setWindowTitle("POE2 Filter Studio")
-        self.resize(1150, 720)
+        self.resize(1250, 720)
 
         self._build_ui()
         self._build_menus()
@@ -52,11 +53,17 @@ class MainWindow(QMainWindow):
 
         self.rule_editor = RuleEditorWidget()
 
+        self.preview_panel = PreviewPanel()
+        self.preview_panel.setMinimumWidth(180)
+        self.preview_panel.setMaximumWidth(340)
+
         splitter.addWidget(self.rule_list)
         splitter.addWidget(self.rule_editor)
+        splitter.addWidget(self.preview_panel)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 3)
-        splitter.setSizes([240, 860])
+        splitter.setStretchFactor(2, 1)
+        splitter.setSizes([240, 720, 260])
         h.addWidget(splitter)
 
         self._status_lbl = QLabel()
@@ -143,6 +150,32 @@ class MainWindow(QMainWindow):
         tb.addAction(self._tb_redo)
 
     # ------------------------------------------------------------------
+    # UI synchronization helpers — RuleEditor + PreviewPanel always in sync
+    # ------------------------------------------------------------------
+
+    def _load_rule_to_ui(self, real_index: int) -> None:
+        """Load rule at real_index into editor, preview, and snapshot.
+
+        Also sets _selected_index. All 8 call-sites that used to set
+        editor/snapshot/preview independently now call this instead.
+        """
+        if 0 <= real_index < len(self._doc.rules):
+            rule = self._doc.rules[real_index]
+            self._selected_index   = real_index
+            self._editing_snapshot = copy.deepcopy(rule)
+            self.rule_editor.load_rule(rule)
+            self.preview_panel.show_rule(rule)
+        else:
+            self._clear_rule_ui()
+
+    def _clear_rule_ui(self) -> None:
+        """Reset editor and preview to no-selection state."""
+        self._selected_index   = -1
+        self._editing_snapshot = None
+        self.rule_editor.setEnabled(False)
+        self.preview_panel.show_empty()
+
+    # ------------------------------------------------------------------
     # File operations
     # ------------------------------------------------------------------
 
@@ -165,10 +198,8 @@ class MainWindow(QMainWindow):
             return
 
         self._doc.load_from_text(text, path)   # also clears undo/redo stacks
-        self._selected_index   = -1
-        self._editing_snapshot = None
         self.rule_list.load_rules(self._doc.rules)
-        self.rule_editor.setEnabled(False)
+        self._clear_rule_ui()
         self._refresh_status()
         self._refresh_undo_actions()
         self.setWindowTitle(f"POE2 Filter Studio — {os.path.basename(path)}")
@@ -205,8 +236,6 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _on_undo(self):
-        # Peek BEFORE undoing to know which command ran, so we can track
-        # selection correctly for MoveRuleCommand (its indices shift).
         last_cmd = self._doc.peek_undo_command()
         self._doc.undo()
         if isinstance(last_cmd, MoveRuleCommand) and not last_cmd.is_noop:
@@ -224,17 +253,11 @@ class MainWindow(QMainWindow):
 
     def _refresh_after_undo_redo(self):
         self.rule_list.load_rules(self._doc.rules)
-
-        # Re-load the editor if the selected rule still exists
         if 0 <= self._selected_index < len(self._doc.rules):
-            current_rule = self._doc.rules[self._selected_index]
-            self.rule_editor.load_rule(current_rule)
-            self._editing_snapshot = copy.deepcopy(current_rule)
+            self.rule_list.select_real_index(self._selected_index)
+            self._load_rule_to_ui(self._selected_index)
         else:
-            self._selected_index   = -1
-            self._editing_snapshot = None
-            self.rule_editor.setEnabled(False)
-
+            self._clear_rule_ui()
         self._refresh_status()
         self._refresh_undo_actions()
 
@@ -251,9 +274,7 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _on_rule_selected(self, real_index: int):
-        self._selected_index   = real_index
-        self._editing_snapshot = copy.deepcopy(self._doc.rules[real_index])
-        self.rule_editor.load_rule(self._doc.rules[real_index])
+        self._load_rule_to_ui(real_index)
 
     def _on_rule_changed(self):
         """RuleEditor._apply() has already mutated the rule in-place.
@@ -272,8 +293,9 @@ class MainWindow(QMainWindow):
         cmd = UpdateRuleCommand(self._doc, idx, old_rule, new_rule)
         self._doc.execute(cmd)
 
-        # Refresh snapshot for a potential subsequent apply
+        # Refresh snapshot and preview for a potential subsequent apply
         self._editing_snapshot = copy.deepcopy(self._doc.rules[idx])
+        self.preview_panel.show_rule(self._doc.rules[idx])
 
         self.rule_list.refresh()
         self._refresh_status()
@@ -289,11 +311,9 @@ class MainWindow(QMainWindow):
         cmd = AddRuleCommand(self._doc, insert_at, new_rule)
         self._doc.execute(cmd)
 
-        self._selected_index   = insert_at
-        self._editing_snapshot = copy.deepcopy(self._doc.rules[insert_at])
         self.rule_list.load_rules(self._doc.rules)
         self.rule_list.select_real_index(insert_at)
-        self.rule_editor.load_rule(self._doc.rules[insert_at])
+        self._load_rule_to_ui(insert_at)
         self._refresh_status()
         self._refresh_undo_actions()
 
@@ -310,10 +330,8 @@ class MainWindow(QMainWindow):
         cmd = DeleteRuleCommand(self._doc, real_index)
         self._doc.execute(cmd)
 
-        self._selected_index   = -1
-        self._editing_snapshot = None
         self.rule_list.load_rules(self._doc.rules)
-        self.rule_editor.setEnabled(False)
+        self._clear_rule_ui()
         self._refresh_status()
         self._refresh_undo_actions()
 
@@ -325,12 +343,9 @@ class MainWindow(QMainWindow):
 
         self._doc.execute(cmd)
 
-        # Follow the dragged rule to its new position
-        self._selected_index   = cmd.to_index
-        self._editing_snapshot = copy.deepcopy(self._doc.rules[cmd.to_index])
         self.rule_list.load_rules(self._doc.rules)
         self.rule_list.select_real_index(cmd.to_index)
-        self.rule_editor.load_rule(self._doc.rules[cmd.to_index])
+        self._load_rule_to_ui(cmd.to_index)
         self._refresh_status()
         self._refresh_undo_actions()
 
@@ -342,11 +357,9 @@ class MainWindow(QMainWindow):
         self._doc.execute(cmd)
         new_index = cmd.new_index
 
-        self._selected_index   = new_index
-        self._editing_snapshot = copy.deepcopy(self._doc.rules[new_index])
         self.rule_list.load_rules(self._doc.rules)
         self.rule_list.select_real_index(new_index)
-        self.rule_editor.load_rule(self._doc.rules[new_index])
+        self._load_rule_to_ui(new_index)
         self._refresh_status()
         self._refresh_undo_actions()
 
