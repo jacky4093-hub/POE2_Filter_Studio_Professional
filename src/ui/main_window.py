@@ -1,3 +1,4 @@
+import copy
 import os
 
 from PySide6.QtWidgets import (
@@ -9,6 +10,10 @@ from PySide6.QtGui import QAction, QKeySequence
 
 from core.document import FilterDocument
 from core.models import FilterRule
+from core.commands import (
+    AddRuleCommand, DeleteRuleCommand,
+    DuplicateRuleCommand, UpdateRuleCommand,
+)
 from widgets.rule_list import RuleListWidget
 from editor.rule_editor import RuleEditorWidget
 
@@ -18,6 +23,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self._doc = FilterDocument()
         self._selected_index: int = -1
+        self._editing_snapshot: FilterRule | None = None   # deep-copy taken at load_rule time
 
         self.setWindowTitle("POE2 Filter Studio")
         self.resize(1150, 720)
@@ -63,6 +69,8 @@ class MainWindow(QMainWindow):
 
     def _build_menus(self):
         mb = self.menuBar()
+
+        # ── 檔案 ──────────────────────────────────────────────────────
         fm = mb.addMenu("檔案(&F)")
 
         a = QAction("開啟(&O)…", self)
@@ -87,6 +95,21 @@ class MainWindow(QMainWindow):
         a.triggered.connect(self.close)
         fm.addAction(a)
 
+        # ── 編輯 ──────────────────────────────────────────────────────
+        em = mb.addMenu("編輯(&E)")
+
+        self._undo_action = QAction("復原(&U)", self)
+        self._undo_action.setShortcut(QKeySequence("Ctrl+Z"))
+        self._undo_action.setEnabled(False)
+        self._undo_action.triggered.connect(self._on_undo)
+        em.addAction(self._undo_action)
+
+        self._redo_action = QAction("取消復原(&R)", self)
+        self._redo_action.setShortcut(QKeySequence("Ctrl+Y"))
+        self._redo_action.setEnabled(False)
+        self._redo_action.triggered.connect(self._on_redo)
+        em.addAction(self._redo_action)
+
     def _build_toolbar(self):
         tb = self.addToolBar("工具列")
         tb.setMovable(False)
@@ -104,6 +127,18 @@ class MainWindow(QMainWindow):
         a = QAction("新增規則", self)
         a.triggered.connect(self._on_add_rule)
         tb.addAction(a)
+
+        tb.addSeparator()
+
+        self._tb_undo = QAction("復原", self)
+        self._tb_undo.setEnabled(False)
+        self._tb_undo.triggered.connect(self._on_undo)
+        tb.addAction(self._tb_undo)
+
+        self._tb_redo = QAction("取消復原", self)
+        self._tb_redo.setEnabled(False)
+        self._tb_redo.triggered.connect(self._on_redo)
+        tb.addAction(self._tb_redo)
 
     # ------------------------------------------------------------------
     # File operations
@@ -127,11 +162,13 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "錯誤", f"無法開啟檔案：\n{e}")
             return
 
-        self._doc.load_from_text(text, path)
-        self._selected_index = -1
+        self._doc.load_from_text(text, path)   # also clears undo/redo stacks
+        self._selected_index   = -1
+        self._editing_snapshot = None
         self.rule_list.load_rules(self._doc.rules)
         self.rule_editor.setEnabled(False)
         self._refresh_status()
+        self._refresh_undo_actions()
         self.setWindowTitle(f"POE2 Filter Studio — {os.path.basename(path)}")
 
     def save_file(self):
@@ -162,21 +199,73 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(f"POE2 Filter Studio — {os.path.basename(path)}")
 
     # ------------------------------------------------------------------
-    # Rule operations — routed through FilterDocument
+    # Undo / Redo
+    # ------------------------------------------------------------------
+
+    def _on_undo(self):
+        self._doc.undo()
+        self._refresh_after_undo_redo()
+
+    def _on_redo(self):
+        self._doc.redo()
+        self._refresh_after_undo_redo()
+
+    def _refresh_after_undo_redo(self):
+        self.rule_list.load_rules(self._doc.rules)
+
+        # Re-load the editor if the selected rule still exists
+        if 0 <= self._selected_index < len(self._doc.rules):
+            current_rule = self._doc.rules[self._selected_index]
+            self.rule_editor.load_rule(current_rule)
+            self._editing_snapshot = copy.deepcopy(current_rule)
+        else:
+            self._selected_index   = -1
+            self._editing_snapshot = None
+            self.rule_editor.setEnabled(False)
+
+        self._refresh_status()
+        self._refresh_undo_actions()
+
+    def _refresh_undo_actions(self):
+        can_u = self._doc.can_undo()
+        can_r = self._doc.can_redo()
+        self._undo_action.setEnabled(can_u)
+        self._redo_action.setEnabled(can_r)
+        self._tb_undo.setEnabled(can_u)
+        self._tb_redo.setEnabled(can_r)
+
+    # ------------------------------------------------------------------
+    # Rule operations — all routed through Commands
     # ------------------------------------------------------------------
 
     def _on_rule_selected(self, real_index: int):
-        self._selected_index = real_index
+        self._selected_index   = real_index
+        self._editing_snapshot = copy.deepcopy(self._doc.rules[real_index])
         self.rule_editor.load_rule(self._doc.rules[real_index])
 
     def _on_rule_changed(self):
-        # The editor mutates the rule object in-place; notify the document.
-        if 0 <= self._selected_index < len(self._doc.rules):
-            self._doc.update_rule(
-                self._selected_index, self._doc.rules[self._selected_index]
-            )
+        """RuleEditor._apply() has already mutated the rule in-place.
+        Wrap the change in an UpdateRuleCommand so it can be undone.
+        """
+        idx = self._selected_index
+        if not (0 <= idx < len(self._doc.rules)):
+            return
+
+        old_rule = self._editing_snapshot
+        if old_rule is None:
+            old_rule = copy.deepcopy(self._doc.rules[idx])
+
+        new_rule = copy.deepcopy(self._doc.rules[idx])
+
+        cmd = UpdateRuleCommand(self._doc, idx, old_rule, new_rule)
+        self._doc.execute(cmd)
+
+        # Refresh snapshot for a potential subsequent apply
+        self._editing_snapshot = copy.deepcopy(self._doc.rules[idx])
+
         self.rule_list.refresh()
         self._refresh_status()
+        self._refresh_undo_actions()
 
     def _on_add_rule(self):
         new_rule = FilterRule(action="Show", pre_lines=[""])
@@ -185,12 +274,16 @@ class MainWindow(QMainWindow):
         else:
             insert_at = self._doc.tail_insert_pos()
 
-        self._doc.insert_rule(insert_at, new_rule)
-        self._selected_index = insert_at
+        cmd = AddRuleCommand(self._doc, insert_at, new_rule)
+        self._doc.execute(cmd)
+
+        self._selected_index   = insert_at
+        self._editing_snapshot = copy.deepcopy(self._doc.rules[insert_at])
         self.rule_list.load_rules(self._doc.rules)
         self.rule_list.select_real_index(insert_at)
-        self.rule_editor.load_rule(new_rule)
+        self.rule_editor.load_rule(self._doc.rules[insert_at])
         self._refresh_status()
+        self._refresh_undo_actions()
 
     def _on_delete_rule(self, real_index: int):
         if not (0 <= real_index < len(self._doc.rules)):
@@ -202,28 +295,38 @@ class MainWindow(QMainWindow):
         if reply != QMessageBox.StandardButton.Yes:
             return
 
-        self._doc.remove_rule(real_index)
-        self._selected_index = -1
+        cmd = DeleteRuleCommand(self._doc, real_index)
+        self._doc.execute(cmd)
+
+        self._selected_index   = -1
+        self._editing_snapshot = None
         self.rule_list.load_rules(self._doc.rules)
         self.rule_editor.setEnabled(False)
         self._refresh_status()
+        self._refresh_undo_actions()
 
     def _on_copy_rule(self, real_index: int):
         if not (0 <= real_index < len(self._doc.rules)):
             return
-        new_index = self._doc.duplicate_rule(real_index)
-        self._selected_index = new_index
+
+        cmd = DuplicateRuleCommand(self._doc, real_index)
+        self._doc.execute(cmd)
+        new_index = cmd.new_index
+
+        self._selected_index   = new_index
+        self._editing_snapshot = copy.deepcopy(self._doc.rules[new_index])
         self.rule_list.load_rules(self._doc.rules)
         self.rule_list.select_real_index(new_index)
         self.rule_editor.load_rule(self._doc.rules[new_index])
         self._refresh_status()
+        self._refresh_undo_actions()
 
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
 
     def _refresh_status(self):
-        name = os.path.basename(self._doc.file_path) if self._doc.file_path else "（未開啟）"
+        name  = os.path.basename(self._doc.file_path) if self._doc.file_path else "（未開啟）"
         dirty = " [已修改]" if self._doc.dirty else ""
         count = self._doc.visible_count
         self._status_lbl.setText(f"{name}{dirty}  ·  {count} 條規則")
