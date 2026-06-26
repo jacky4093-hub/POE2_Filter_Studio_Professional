@@ -92,16 +92,19 @@ class RuleListWidget(QWidget):
 
     @staticmethod
     def _make_label(display_num: int, rule: FilterRule) -> str:
-        first = ""
         if rule.conditions:
             k, v = rule.conditions[0]
-            first = f"  {k} {v}".rstrip()
+            # Strip surrounding quotes for readability: "Currency" -> Currency
+            v_clean = v.strip('"').strip("'").strip()
+            detail = f"{k} {v_clean}".strip()
         elif rule.actions:
             k, v = rule.actions[0]
-            first = f"  {k}".rstrip()
-        label = f"{rule.action}{first}"
-        if len(label) > 48:
-            label = label[:45] + "…"
+            detail = k
+        else:
+            detail = "Empty Rule"
+        label = f"{rule.action} — {detail}"
+        if len(label) > 52:
+            label = label[:49] + "…"
         return f"[{display_num}] {label}"
 
     # ------------------------------------------------------------------
