@@ -1,67 +1,140 @@
+"""Schema-driven Rule Editor — v0.3.0
+
+Public API (unchanged from v0.2):
+  load_rule(rule: FilterRule)
+  rule_changed  Signal()
+
+Sections:
+  General    — Show/Hide action + inline comment
+  Conditions — dynamic add/remove rows (schema-typed widgets)
+  Appearance — dynamic add/remove rows  (color, font, minimap, effect)
+  Audio      — dynamic add/remove rows  (alert sounds, drop sound)
+
+Unknown conditions/actions not in the schema are preserved via
+UnknownPropertyWidget so they round-trip correctly.
+"""
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
     QComboBox, QLineEdit, QPushButton,
-    QScrollArea, QGroupBox, QLabel,
+    QScrollArea, QGroupBox, QMenu, QLabel,
+    QSizePolicy,
 )
 from PySide6.QtCore import Signal, Qt
+from PySide6.QtGui import QAction
 
-from core.models import FilterRule, BLOCK_HEADERS, KNOWN_CONDITIONS, KNOWN_ACTIONS
+from core.models import FilterRule, BLOCK_HEADERS
+from core.filter_schema import (
+    CONDITION_SCHEMA, ACTION_SCHEMA,
+    SECTION_APPEARANCE, SECTION_AUDIO, SECTION_CONDITIONS,
+    get_field_def,
+)
+from editor.property_widgets import make_property_widget, BasePropertyWidget
 
 
 # ---------------------------------------------------------------------------
-# Row widgets
+# PropertyRow — one key + its typed widget + remove button
 # ---------------------------------------------------------------------------
 
-class _KeyValueRow(QWidget):
-    """A single editable key/value row with a remove button."""
-
+class _PropertyRow(QWidget):
     removed = Signal(object)  # emits self
 
-    def __init__(self, keys: list[str], key: str = "", value: str = "", parent=None):
+    def __init__(self, key: str, raw_value: str, parent=None):
         super().__init__(parent)
+        self.key = key
+
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 1, 0, 1)
-        layout.setSpacing(4)
+        layout.setSpacing(6)
 
-        self.key_combo = QComboBox()
-        self.key_combo.setEditable(True)
-        self.key_combo.addItems(keys)
-        self.key_combo.setCurrentText(key)
-        self.key_combo.setMinimumWidth(170)
-        self.key_combo.setSizeAdjustPolicy(
-            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        # Label (fixed width for alignment)
+        fd = get_field_def(key)
+        display = fd.display_name if fd else key
+        lbl = QLabel(display)
+        lbl.setFixedWidth(100)
+        lbl.setToolTip(key)
+
+        self.prop_widget = make_property_widget(fd)
+        self.prop_widget.set_raw_value(raw_value)
+        self.prop_widget.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
 
-        self.value_edit = QLineEdit(value)
-        self.value_edit.setPlaceholderText("值")
+        btn_rm = QPushButton("✕")
+        btn_rm.setFixedSize(24, 24)
+        btn_rm.clicked.connect(lambda: self.removed.emit(self))
 
-        btn = QPushButton("✕")
-        btn.setFixedWidth(26)
-        btn.setFixedHeight(24)
-        btn.clicked.connect(lambda: self.removed.emit(self))
-
-        layout.addWidget(self.key_combo)
-        layout.addWidget(self.value_edit, 1)
-        layout.addWidget(btn)
+        layout.addWidget(lbl)
+        layout.addWidget(self.prop_widget, 1)
+        layout.addWidget(btn_rm)
 
     def get_data(self) -> list:
-        return [self.key_combo.currentText().strip(), self.value_edit.text().strip()]
+        return [self.key, self.prop_widget.get_raw_value()]
 
 
 # ---------------------------------------------------------------------------
-# Main editor widget
+# _SectionPanel — a scrollable GroupBox with dynamic property rows
+# ---------------------------------------------------------------------------
+
+class _SectionPanel(QGroupBox):
+    def __init__(self, title: str, parent=None):
+        super().__init__(title, parent)
+        outer = QVBoxLayout(self)
+        outer.setSpacing(4)
+        outer.setContentsMargins(6, 6, 6, 6)
+
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+
+        self._container = QWidget()
+        self._layout = QVBoxLayout(self._container)
+        self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self._layout.setSpacing(2)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._scroll.setWidget(self._container)
+
+        outer.addWidget(self._scroll)
+        self._rows: list[_PropertyRow] = []
+
+    def set_max_height(self, h: int):
+        self._scroll.setMaximumHeight(h)
+
+    def clear(self):
+        for row in self._rows:
+            self._layout.removeWidget(row)
+            row.deleteLater()
+        self._rows.clear()
+
+    def add_row(self, key: str, value: str):
+        row = _PropertyRow(key, value)
+        row.removed.connect(self._on_remove)
+        self._rows.append(row)
+        self._layout.addWidget(row)
+
+    def _on_remove(self, row: _PropertyRow):
+        if row in self._rows:
+            self._rows.remove(row)
+            self._layout.removeWidget(row)
+            row.deleteLater()
+
+    def collect(self) -> list:
+        return [row.get_data() for row in self._rows]
+
+    def used_keys(self) -> set[str]:
+        return {row.key for row in self._rows}
+
+
+# ---------------------------------------------------------------------------
+# RuleEditorWidget
 # ---------------------------------------------------------------------------
 
 class RuleEditorWidget(QWidget):
-    """Right-hand panel for editing a single FilterRule."""
-
     rule_changed = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._rule: FilterRule | None = None
-        self._cond_rows: list[_KeyValueRow] = []
-        self._act_rows: list[_KeyValueRow] = []
         self._setup_ui()
         self.setEnabled(False)
 
@@ -74,66 +147,51 @@ class RuleEditorWidget(QWidget):
         root.setContentsMargins(8, 8, 8, 8)
         root.setSpacing(8)
 
-        # Header group
-        hdr_box = QGroupBox("規則標頭")
-        hdr_form = QFormLayout(hdr_box)
-        hdr_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        # ── General ──────────────────────────────────────────────────
+        gen_box = QGroupBox("General")
+        gen_form = QFormLayout(gen_box)
+        gen_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
 
         self.action_combo = QComboBox()
         self.action_combo.addItems(BLOCK_HEADERS)
-        hdr_form.addRow("動作:", self.action_combo)
+        gen_form.addRow("動作:", self.action_combo)
 
         self.comment_edit = QLineEdit()
         self.comment_edit.setPlaceholderText("（選填）同行備註")
-        hdr_form.addRow("備註:", self.comment_edit)
+        gen_form.addRow("備註:", self.comment_edit)
 
-        root.addWidget(hdr_box)
+        root.addWidget(gen_box)
 
-        # Conditions group
-        cond_box = QGroupBox("篩選條件 (Conditions)")
-        cond_outer = QVBoxLayout(cond_box)
-        cond_outer.setSpacing(4)
-
-        self._cond_scroll = QScrollArea()
-        self._cond_scroll.setWidgetResizable(True)
-        self._cond_scroll.setMaximumHeight(220)
-        self._cond_container = QWidget()
-        self._cond_layout = QVBoxLayout(self._cond_container)
-        self._cond_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self._cond_layout.setSpacing(2)
-        self._cond_layout.setContentsMargins(2, 2, 2, 2)
-        self._cond_scroll.setWidget(self._cond_container)
-        cond_outer.addWidget(self._cond_scroll)
+        # ── Conditions ───────────────────────────────────────────────
+        self._cond_panel = _SectionPanel("Conditions 篩選條件")
+        self._cond_panel.set_max_height(240)
+        root.addWidget(self._cond_panel)
 
         btn_add_cond = QPushButton("＋ 新增條件")
-        btn_add_cond.clicked.connect(lambda: self._add_cond_row())
-        cond_outer.addWidget(btn_add_cond)
+        btn_add_cond.clicked.connect(self._show_add_condition_menu)
+        root.addWidget(btn_add_cond)
+        self._btn_add_cond = btn_add_cond
 
-        root.addWidget(cond_box)
+        # ── Appearance ───────────────────────────────────────────────
+        self._app_panel = _SectionPanel("Appearance 顯示設定")
+        self._app_panel.set_max_height(240)
+        root.addWidget(self._app_panel)
 
-        # Actions group
-        act_box = QGroupBox("顯示設定 (Actions)")
-        act_outer = QVBoxLayout(act_box)
-        act_outer.setSpacing(4)
+        btn_add_app = QPushButton("＋ 新增顯示設定")
+        btn_add_app.clicked.connect(self._show_add_appearance_menu)
+        root.addWidget(btn_add_app)
+        self._btn_add_app = btn_add_app
 
-        self._act_scroll = QScrollArea()
-        self._act_scroll.setWidgetResizable(True)
-        self._act_scroll.setMaximumHeight(220)
-        self._act_container = QWidget()
-        self._act_layout = QVBoxLayout(self._act_container)
-        self._act_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self._act_layout.setSpacing(2)
-        self._act_layout.setContentsMargins(2, 2, 2, 2)
-        self._act_scroll.setWidget(self._act_container)
-        act_outer.addWidget(self._act_scroll)
+        # ── Audio ────────────────────────────────────────────────────
+        self._audio_panel = _SectionPanel("Audio 音效設定")
+        self._audio_panel.set_max_height(160)
+        root.addWidget(self._audio_panel)
 
-        btn_add_act = QPushButton("＋ 新增動作")
-        btn_add_act.clicked.connect(lambda: self._add_act_row())
-        act_outer.addWidget(btn_add_act)
+        btn_add_audio = QPushButton("＋ 新增音效設定")
+        btn_add_audio.clicked.connect(self._show_add_audio_menu)
+        root.addWidget(btn_add_audio)
 
-        root.addWidget(act_box)
-
-        # Apply button
+        # ── Apply ────────────────────────────────────────────────────
         self.btn_apply = QPushButton("套用修改 ✔")
         self.btn_apply.setFixedHeight(32)
         self.btn_apply.clicked.connect(self._apply)
@@ -149,58 +207,81 @@ class RuleEditorWidget(QWidget):
         self._rule = rule
         self.setEnabled(True)
 
-        # Header
+        # General
         idx = BLOCK_HEADERS.index(rule.action) if rule.action in BLOCK_HEADERS else 0
         self.action_combo.setCurrentIndex(idx)
         self.comment_edit.setText(rule.inline_comment)
 
-        # Rebuild condition rows
-        self._clear_rows(self._cond_layout, self._cond_rows)
+        # Conditions
+        self._cond_panel.clear()
         for key, value in rule.conditions:
-            self._add_cond_row(key, value)
+            self._cond_panel.add_row(key, value)
 
-        # Rebuild action rows
-        self._clear_rows(self._act_layout, self._act_rows)
+        # Actions → split into Appearance and Audio
+        self._app_panel.clear()
+        self._audio_panel.clear()
         for key, value in rule.actions:
-            self._add_act_row(key, value)
+            fd = get_field_def(key)
+            if fd and fd.section == SECTION_AUDIO:
+                self._audio_panel.add_row(key, value)
+            else:
+                # Appearance OR unknown action — both go into Appearance panel
+                self._app_panel.add_row(key, value)
 
     # ------------------------------------------------------------------
-    # Row management helpers
+    # "Add" menus — show only items not already used
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _clear_rows(layout, rows: list):
-        for row in rows:
-            layout.removeWidget(row)
-            row.deleteLater()
-        rows.clear()
+    def _show_add_condition_menu(self):
+        used = self._cond_panel.used_keys()
+        menu = QMenu(self)
+        for key, fd in CONDITION_SCHEMA.items():
+            if key not in used:
+                act = QAction(f"{fd.display_name}  ({key})", self)
+                act.triggered.connect(lambda _=False, k=key: self._cond_panel.add_row(k, ""))
+                menu.addAction(act)
+        if menu.isEmpty():
+            act = QAction("（所有條件已新增）", self)
+            act.setEnabled(False)
+            menu.addAction(act)
+        menu.exec(self._btn_add_cond.mapToGlobal(
+            self._btn_add_cond.rect().bottomLeft()
+        ))
 
-    def _add_cond_row(self, key: str = "", value: str = ""):
-        row = _KeyValueRow(KNOWN_CONDITIONS, key=key, value=value)
-        row.removed.connect(self._remove_cond_row)
-        self._cond_rows.append(row)
-        self._cond_layout.addWidget(row)
+    def _show_add_appearance_menu(self):
+        used = self._app_panel.used_keys()
+        menu = QMenu(self)
+        for key, fd in ACTION_SCHEMA.items():
+            if fd.section == SECTION_APPEARANCE and key not in used:
+                act = QAction(f"{fd.display_name}  ({key})", self)
+                act.triggered.connect(lambda _=False, k=key: self._app_panel.add_row(k, ""))
+                menu.addAction(act)
+        if menu.isEmpty():
+            act = QAction("（所有顯示設定已新增）", self)
+            act.setEnabled(False)
+            menu.addAction(act)
+        menu.exec(self._btn_add_app.mapToGlobal(
+            self._btn_add_app.rect().bottomLeft()
+        ))
 
-    def _remove_cond_row(self, row: _KeyValueRow):
-        if row in self._cond_rows:
-            self._cond_rows.remove(row)
-            self._cond_layout.removeWidget(row)
-            row.deleteLater()
-
-    def _add_act_row(self, key: str = "", value: str = ""):
-        row = _KeyValueRow(KNOWN_ACTIONS, key=key, value=value)
-        row.removed.connect(self._remove_act_row)
-        self._act_rows.append(row)
-        self._act_layout.addWidget(row)
-
-    def _remove_act_row(self, row: _KeyValueRow):
-        if row in self._act_rows:
-            self._act_rows.remove(row)
-            self._act_layout.removeWidget(row)
-            row.deleteLater()
+    def _show_add_audio_menu(self):
+        used = self._audio_panel.used_keys()
+        menu = QMenu(self)
+        for key, fd in ACTION_SCHEMA.items():
+            if fd.section == SECTION_AUDIO and key not in used:
+                act = QAction(f"{fd.display_name}  ({key})", self)
+                act.triggered.connect(lambda _=False, k=key: self._audio_panel.add_row(k, ""))
+                menu.addAction(act)
+        if menu.isEmpty():
+            act = QAction("（所有音效設定已新增）", self)
+            act.setEnabled(False)
+            menu.addAction(act)
+        menu.exec(self.sender().parent().mapToGlobal(
+            self.sender().rect().bottomLeft()
+        ) if self.sender() else self.mapToGlobal(self.rect().center()))
 
     # ------------------------------------------------------------------
-    # Apply
+    # Apply — write back to FilterRule (same contract as v0.2)
     # ------------------------------------------------------------------
 
     def _apply(self):
@@ -208,6 +289,8 @@ class RuleEditorWidget(QWidget):
             return
         self._rule.action = self.action_combo.currentText()
         self._rule.inline_comment = self.comment_edit.text()
-        self._rule.conditions = [r.get_data() for r in self._cond_rows]
-        self._rule.actions = [r.get_data() for r in self._act_rows]
+        self._rule.conditions = self._cond_panel.collect()
+        self._rule.actions = (
+            self._app_panel.collect() + self._audio_panel.collect()
+        )
         self.rule_changed.emit()
