@@ -18,7 +18,10 @@ import pytest
 from PySide6.QtWidgets import QApplication
 
 from core.models import FilterRule
-from ui.rule_detail_editor import RuleDetailEditor
+from ui.rule_detail_editor import (
+    RuleDetailEditor, _MM_SHAPES, _MM_COLORS,
+    _effect_parse,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -1651,3 +1654,461 @@ class TestP153SwatchStillClickable:
         )
         ed._on_swatch_clicked("SetBorderColor", ed._bordercolor_edit)
         assert calls == ["SetBorderColor"]
+
+
+# ===========================================================================
+# TestP154MinimapPreviewWidget  (P15.4 新增)
+# ===========================================================================
+
+class TestP154MinimapPreviewWidgetUnit:
+    """Unit tests for MinimapPreviewWidget — no editor required."""
+
+    def test_widget_objectname(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        assert w.objectName() == "MinimapPreviewWidget"
+
+    def test_widget_fixed_size(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        assert w.width()  == 54
+        assert w.height() == 54
+
+    def test_initial_state_is_empty(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        assert w._size  == ""
+        assert w._color == ""
+        assert w._shape == ""
+
+    def test_set_icon_stores_values(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        w.set_icon("1", "Red", "Circle")
+        assert w._size  == "1"
+        assert w._color == "Red"
+        assert w._shape == "Circle"
+
+    def test_clear_resets_values(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        w.set_icon("1", "Red", "Circle")
+        w.clear()
+        assert w._size  == ""
+        assert w._color == ""
+        assert w._shape == ""
+
+    def test_paintEvent_empty_does_not_raise(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        w.show()
+        w.repaint()
+        w.hide()
+
+    def test_paintEvent_with_icon_does_not_raise(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        w.set_icon("1", "Blue", "Diamond")
+        w.show()
+        w.repaint()
+        w.hide()
+
+    @pytest.mark.parametrize("shape", [
+        "circle", "square", "diamond", "triangle", "star", "cross",
+        "hexagon", "pentagon", "moon", "kite", "raindrop", "upsidedownhouse",
+        "unknown_shape",
+    ])
+    def test_all_shapes_paint_without_crash(self, qapp, shape):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        w.set_icon("1", "Green", shape.capitalize())
+        w.show()
+        w.repaint()
+        w.hide()
+
+    @pytest.mark.parametrize("color", [
+        "Red", "Green", "Blue", "Brown", "White", "Yellow",
+        "Cyan", "Grey", "Orange", "Pink", "Purple",
+    ])
+    def test_all_colors_paint_without_crash(self, qapp, color):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        w.set_icon("0", color, "Circle")
+        w.show()
+        w.repaint()
+        w.hide()
+
+    @pytest.mark.parametrize("size", ["0", "1", "2", "99"])
+    def test_all_sizes_paint_without_crash(self, qapp, size):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        w.set_icon(size, "Red", "Star")
+        w.show()
+        w.repaint()
+        w.hide()
+
+    def test_unknown_color_falls_back_gracefully(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        w.set_icon("1", "NotAColor", "Circle")
+        w.show()
+        w.repaint()  # must not raise
+        w.hide()
+
+
+class TestP154MinimapPreviewOnEditor:
+    """Integration: MinimapPreviewWidget is wired into RuleDetailEditor."""
+
+    def test_preview_widget_exists_on_editor(self, qapp):
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_mm_preview")
+
+    def test_preview_widget_is_correct_type(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        ed = _make_editor(qapp)
+        assert isinstance(ed._mm_preview, MinimapPreviewWidget)
+
+    def test_set_rule_valid_minimap_updates_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        assert ed._mm_preview._size  == "1"
+        assert ed._mm_preview._color == "Red"
+        assert ed._mm_preview._shape == "Circle"
+
+    def test_set_rule_no_minimap_clears_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        assert ed._mm_preview._size == ""
+
+    def test_manual_valid_text_updates_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._minimap_edit.setText("0 Yellow Star")
+        assert ed._mm_preview._size  == "0"
+        assert ed._mm_preview._color == "Yellow"
+        assert ed._mm_preview._shape == "Star"
+
+    def test_manual_invalid_text_clears_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        ed._minimap_edit.setText("bad input")
+        assert ed._mm_preview._size == ""
+
+    def test_manual_empty_text_clears_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        ed._minimap_edit.setText("")
+        assert ed._mm_preview._size == ""
+
+    def test_combo_change_updates_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        ed._mm_color.setCurrentText("Blue")
+        assert ed._mm_preview._color == "Blue"
+
+    def test_combo_shape_change_updates_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        ed._mm_shape.setCurrentText("Star")
+        assert ed._mm_preview._shape == "Star"
+
+    def test_combo_size_change_updates_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        ed._mm_size.setCurrentText("0")
+        assert ed._mm_preview._size == "0"
+
+    def test_invalid_text_does_not_raise(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._minimap_edit.setText("!!invalid!! text 999")
+        # Must not raise; preview in empty state
+        assert ed._mm_preview._size == ""
+
+    def test_preview_survives_all_known_shapes(self, qapp):
+        ed = _make_editor(qapp)
+        for shape in _MM_SHAPES:
+            ed._mm_preview.set_icon("1", "Red", shape)
+            ed._mm_preview.repaint()  # must not raise
+
+
+class TestP154MinimapPreviewColorsDict:
+    """_MM_PREVIEW_COLORS covers all POE2 colour names."""
+
+    def test_all_mm_colors_in_preview_map(self, qapp):
+        from ui.rule_detail_editor import _MM_PREVIEW_COLORS
+        for name in _MM_COLORS:
+            assert name in _MM_PREVIEW_COLORS, f"Missing: {name}"
+
+    def test_preview_color_tuples_are_valid_rgb(self, qapp):
+        from ui.rule_detail_editor import _MM_PREVIEW_COLORS
+        for name, rgb in _MM_PREVIEW_COLORS.items():
+            assert len(rgb) == 3, f"{name}: expected (R,G,B)"
+            for ch in rgb:
+                assert 0 <= ch <= 255, f"{name}: channel {ch} out of range"
+
+
+# ===========================================================================
+# TestP155VisualSoundEditor  (P15.5 新增)
+# ===========================================================================
+
+class TestP155EffectParseFn:
+    """Pure function _effect_parse() correctness."""
+
+    def test_valid_color_only(self, qapp):
+        result = _effect_parse("Red")
+        assert result == ("Red", False)
+
+    def test_valid_color_with_temp(self, qapp):
+        result = _effect_parse("Blue Temp")
+        assert result == ("Blue", True)
+
+    def test_temp_case_insensitive(self, qapp):
+        result = _effect_parse("Green temp")
+        assert result is not None
+        assert result[1] is True
+
+    def test_invalid_color_returns_none(self, qapp):
+        assert _effect_parse("NotAColor") is None
+
+    def test_empty_returns_none(self, qapp):
+        assert _effect_parse("") is None
+
+    def test_whitespace_returns_none(self, qapp):
+        assert _effect_parse("   ") is None
+
+    def test_extra_words_ignored(self, qapp):
+        result = _effect_parse("Purple Temp Extra")
+        assert result == ("Purple", True)
+
+    def test_all_valid_mm_colors_accepted(self, qapp):
+        for color in _MM_COLORS:
+            result = _effect_parse(color)
+            assert result is not None, f"_effect_parse rejected valid color: {color}"
+            assert result[0] == color
+            assert result[1] is False
+
+    def test_no_temp_returns_false(self, qapp):
+        result = _effect_parse("Yellow")
+        assert result == ("Yellow", False)
+
+    def test_non_temp_second_word_returns_false(self, qapp):
+        result = _effect_parse("Red permanent")
+        assert result is not None
+        assert result[1] is False
+
+
+class TestP155AlertSoundPreviewLabel:
+    """PlayAlertSound preview label exists and updates correctly."""
+
+    def test_preview_lbl_exists(self, qapp):
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_alert_preview_lbl")
+
+    def test_preview_lbl_objectname(self, qapp):
+        from PySide6.QtWidgets import QLabel
+        ed = _make_editor(qapp)
+        assert isinstance(ed._alert_preview_lbl, QLabel)
+        assert ed._alert_preview_lbl.objectName() == "AlertSoundPreviewLabel"
+
+    def test_initial_label_shows_unset(self, qapp):
+        ed = _make_editor(qapp)
+        assert "未設定" in ed._alert_preview_lbl.text()
+
+    def test_valid_sound_shows_id_and_vol(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "3 200"]]), index=0)
+        text = ed._alert_preview_lbl.text()
+        assert "3" in text
+        assert "200" in text
+
+    def test_invalid_sound_shows_unset(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._alert_edit.setText("99 999")
+        assert "未設定" in ed._alert_preview_lbl.text()
+
+    def test_empty_sound_shows_unset(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "1 300"]]), index=0)
+        ed._alert_edit.setText("")
+        assert "未設定" in ed._alert_preview_lbl.text()
+
+    def test_preview_contains_note_symbol(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "5 150"]]), index=0)
+        assert "♪" in ed._alert_preview_lbl.text()
+
+    def test_set_rule_updates_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "7 100"]]), index=0)
+        text = ed._alert_preview_lbl.text()
+        assert "7" in text
+        assert "100" in text
+
+    def test_spin_change_updates_preview_via_text(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._alert_id_spin.setValue(2)
+        ed._alert_vol_spin.setValue(250)
+        text = ed._alert_preview_lbl.text()
+        assert "2" in text
+        assert "250" in text
+
+
+class TestP155PlayEffectWidgets:
+    """PlayEffect controls exist on the editor."""
+
+    def test_effect_edit_exists(self, qapp):
+        from PySide6.QtWidgets import QLineEdit
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_effect_edit")
+        assert isinstance(ed._effect_edit, QLineEdit)
+
+    def test_effect_edit_objectname(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._effect_edit.objectName() == "RuleDetailPlayEffect"
+
+    def test_effect_color_combo_exists(self, qapp):
+        from PySide6.QtWidgets import QComboBox
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_effect_color")
+        assert isinstance(ed._effect_color, QComboBox)
+
+    def test_effect_color_combo_objectname(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._effect_color.objectName() == "EffectColorCombo"
+
+    def test_effect_color_combo_has_all_colors(self, qapp):
+        ed = _make_editor(qapp)
+        items = [ed._effect_color.itemText(i) for i in range(ed._effect_color.count())]
+        for color in _MM_COLORS:
+            assert color in items
+
+    def test_effect_temp_cb_exists(self, qapp):
+        from PySide6.QtWidgets import QCheckBox
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_effect_temp_cb")
+        assert isinstance(ed._effect_temp_cb, QCheckBox)
+
+    def test_effect_temp_cb_objectname(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._effect_temp_cb.objectName() == "EffectTempCheck"
+
+    def test_effect_preview_lbl_exists(self, qapp):
+        from PySide6.QtWidgets import QLabel
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_effect_preview_lbl")
+        assert isinstance(ed._effect_preview_lbl, QLabel)
+
+    def test_effect_preview_lbl_objectname(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._effect_preview_lbl.objectName() == "EffectPreviewLabel"
+
+    def test_effect_initial_preview_shows_unset(self, qapp):
+        ed = _make_editor(qapp)
+        assert "未設定" in ed._effect_preview_lbl.text()
+
+
+class TestP155PlayEffectSync:
+    """PlayEffect text ↔ controls ↔ preview synchronization."""
+
+    def test_valid_text_updates_color_combo(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayEffect", "Blue"]]), index=0)
+        assert ed._effect_color.currentText() == "Blue"
+
+    def test_valid_text_with_temp_checks_checkbox(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayEffect", "Red Temp"]]), index=0)
+        assert ed._effect_temp_cb.isChecked() is True
+
+    def test_valid_text_no_temp_unchecks_checkbox(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayEffect", "Green"]]), index=0)
+        assert ed._effect_temp_cb.isChecked() is False
+
+    def test_invalid_text_does_not_update_combo(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayEffect", "Blue"]]), index=0)
+        ed._effect_edit.setText("NotAColor")
+        # combo stays at last valid value
+        assert ed._effect_color.currentText() == "Blue"
+
+    def test_empty_text_does_not_crash(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._effect_edit.setText("")
+        # no crash; preview shows unset
+        assert "未設定" in ed._effect_preview_lbl.text()
+
+    def test_color_combo_change_updates_text(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayEffect", "Red"]]), index=0)
+        ed._effect_color.setCurrentText("Purple")
+        assert "Purple" in ed._effect_edit.text()
+
+    def test_temp_checkbox_adds_temp_to_text(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayEffect", "Red"]]), index=0)
+        ed._effect_temp_cb.setChecked(True)
+        assert "Temp" in ed._effect_edit.text()
+
+    def test_temp_uncheck_removes_temp_from_text(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayEffect", "Red Temp"]]), index=0)
+        ed._effect_temp_cb.setChecked(False)
+        assert "Temp" not in ed._effect_edit.text()
+
+    def test_valid_text_updates_preview_label(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayEffect", "Yellow"]]), index=0)
+        assert "Yellow" in ed._effect_preview_lbl.text()
+
+    def test_temp_flag_shows_in_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayEffect", "Cyan Temp"]]), index=0)
+        assert "Temp" in ed._effect_preview_lbl.text()
+
+    def test_invalid_text_clears_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayEffect", "Red"]]), index=0)
+        ed._effect_edit.setText("invalid")
+        assert "未設定" in ed._effect_preview_lbl.text()
+
+    def test_set_rule_with_effect_populates_edit(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayEffect", "Orange Temp"]]), index=0)
+        assert ed._effect_edit.text() == "Orange Temp"
+
+    def test_set_rule_no_effect_clears_edit(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        assert ed._effect_edit.text() == ""
+
+    def test_build_rule_saves_effect(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._effect_edit.setText("Pink")
+        emitted = []
+        ed.rule_changed.connect(lambda i, r: emitted.append(r))
+        ed._effect_edit.editingFinished.emit()
+        assert len(emitted) == 1
+        keys = [k for k, v in emitted[0].actions]
+        assert "PlayEffect" in keys
+
+    def test_build_rule_empty_effect_not_in_actions(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._effect_edit.setText("")
+        ed._effect_edit.editingFinished.emit()
+        # empty text → PlayEffect not saved
+        assert ed._effect_edit.text() == ""
+
+    def test_effect_combo_change_emits_rule_changed(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayEffect", "Red"]]), index=0)
+        emitted = []
+        ed.rule_changed.connect(lambda i, r: emitted.append(r))
+        ed._effect_color.setCurrentText("Green")
+        assert len(emitted) >= 1

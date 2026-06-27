@@ -44,14 +44,15 @@ P13.8 alert sound picker:
 from __future__ import annotations
 
 import copy
+import math
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QFormLayout,
     QGroupBox, QLabel, QCheckBox, QComboBox, QLineEdit, QPlainTextEdit,
     QSpinBox, QStackedWidget, QColorDialog, QPushButton,
 )
-from PySide6.QtCore import Signal, Qt, QEvent
-from PySide6.QtGui import QColor
+from PySide6.QtCore import Signal, Qt, QEvent, QPointF, QRectF
+from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QPolygonF
 
 from core.models import FilterRule
 
@@ -106,6 +107,204 @@ def _alert_parse(text: str) -> tuple[int, int] | None:
     return sound_id, volume
 
 
+def _effect_parse(text: str) -> tuple[str, bool] | None:
+    """Parse PlayEffect text into (color, is_temp), or None if invalid."""
+    parts = text.strip().split()
+    if not parts:
+        return None
+    color = parts[0]
+    if color not in _MM_COLORS:
+        return None
+    is_temp = len(parts) >= 2 and parts[1].lower() == "temp"
+    return color, is_temp
+
+
+# RGB triples for each POE2 minimap colour name
+_MM_PREVIEW_COLORS: dict[str, tuple[int, int, int]] = {
+    "Red":    (220,  60,  60),
+    "Green":  ( 60, 200,  60),
+    "Blue":   ( 60, 120, 220),
+    "Brown":  (150,  90,  40),
+    "White":  (230, 230, 230),
+    "Yellow": (220, 200,  40),
+    "Cyan":   ( 40, 200, 200),
+    "Grey":   (140, 140, 140),
+    "Orange": (220, 140,  40),
+    "Pink":   (220, 120, 170),
+    "Purple": (150,  60, 200),
+}
+
+
+class MinimapPreviewWidget(QWidget):
+    """Renders a POE2-style minimap icon: shape + colour + size.
+
+    Call set_icon(size, color, shape) to display an icon, or clear() for
+    the empty-state placeholder.  All drawing is done in paintEvent so
+    there are no external image assets required.
+    """
+
+    # POE2 size-0 is the *largest* icon on the minimap
+    _RADII: dict[str, float] = {"0": 15.0, "1": 12.0, "2": 9.0}
+    _DEFAULT_RADIUS = 12.0
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("MinimapPreviewWidget")
+        self.setFixedSize(54, 54)
+        self._size:  str = ""
+        self._color: str = ""
+        self._shape: str = ""
+
+    def set_icon(self, size: str, color: str, shape: str) -> None:
+        self._size  = size
+        self._color = color
+        self._shape = shape
+        self.update()
+
+    def clear(self) -> None:
+        self._size  = ""
+        self._color = ""
+        self._shape = ""
+        self.update()
+
+    # ------------------------------------------------------------------
+    # Paint
+    # ------------------------------------------------------------------
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        w, h = float(self.width()), float(self.height())
+        cx, cy = w / 2.0, h / 2.0
+
+        painter.fillRect(self.rect(), QColor(7, 9, 15))
+
+        if not self._size:
+            # Empty-state: dashed circle placeholder
+            pen = QPen(QColor(40, 60, 100, 160))
+            pen.setStyle(Qt.PenStyle.DashLine)
+            painter.setPen(pen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawEllipse(QRectF(cx - 13, cy - 13, 26, 26))
+            painter.end()
+            return
+
+        r     = self._RADII.get(self._size, self._DEFAULT_RADIUS)
+        rgb   = _MM_PREVIEW_COLORS.get(self._color, (180, 180, 180))
+        fill  = QColor(*rgb)
+        edge  = QColor(
+            min(rgb[0] + 60, 255),
+            min(rgb[1] + 60, 255),
+            min(rgb[2] + 60, 255),
+        )
+
+        painter.setPen(QPen(edge, 1.2))
+        painter.setBrush(fill)
+        self._draw_shape(painter, cx, cy, r, self._shape.lower())
+        painter.end()
+
+    @staticmethod
+    def _draw_shape(
+        painter: QPainter,
+        cx: float, cy: float, r: float,
+        shape: str,
+    ) -> None:
+        if shape == "circle":
+            painter.drawEllipse(QRectF(cx - r, cy - r, 2 * r, 2 * r))
+
+        elif shape == "square":
+            painter.drawRect(QRectF(cx - r, cy - r, 2 * r, 2 * r))
+
+        elif shape == "diamond":
+            painter.drawPolygon(QPolygonF([
+                QPointF(cx,     cy - r),
+                QPointF(cx + r, cy),
+                QPointF(cx,     cy + r),
+                QPointF(cx - r, cy),
+            ]))
+
+        elif shape == "triangle":
+            hr = r * math.sqrt(3) / 2
+            painter.drawPolygon(QPolygonF([
+                QPointF(cx,      cy - r),
+                QPointF(cx + hr, cy + r / 2),
+                QPointF(cx - hr, cy + r / 2),
+            ]))
+
+        elif shape == "star":
+            outer, inner = r, r * 0.42
+            pts = [
+                QPointF(
+                    cx + (outer if i % 2 == 0 else inner) * math.cos(math.pi * i / 5 - math.pi / 2),
+                    cy + (outer if i % 2 == 0 else inner) * math.sin(math.pi * i / 5 - math.pi / 2),
+                )
+                for i in range(10)
+            ]
+            painter.drawPolygon(QPolygonF(pts))
+
+        elif shape == "cross":
+            arm = r * 0.38
+            painter.drawRect(QRectF(cx - arm, cy - r,   2 * arm, 2 * r))
+            painter.drawRect(QRectF(cx - r,   cy - arm, 2 * r,   2 * arm))
+
+        elif shape == "hexagon":
+            pts = [
+                QPointF(
+                    cx + r * math.cos(math.pi * i / 3 - math.pi / 6),
+                    cy + r * math.sin(math.pi * i / 3 - math.pi / 6),
+                )
+                for i in range(6)
+            ]
+            painter.drawPolygon(QPolygonF(pts))
+
+        elif shape == "pentagon":
+            pts = [
+                QPointF(
+                    cx + r * math.cos(2 * math.pi * i / 5 - math.pi / 2),
+                    cy + r * math.sin(2 * math.pi * i / 5 - math.pi / 2),
+                )
+                for i in range(5)
+            ]
+            painter.drawPolygon(QPolygonF(pts))
+
+        elif shape == "moon":
+            # Crescent via path subtraction
+            full = QPainterPath()
+            full.addEllipse(QRectF(cx - r, cy - r, 2 * r, 2 * r))
+            cut = QPainterPath()
+            cut.addEllipse(QRectF(cx - r * 0.1, cy - r, 2 * r * 0.88, 2 * r * 0.88))
+            painter.drawPath(full.subtracted(cut))
+
+        elif shape == "kite":
+            painter.drawPolygon(QPolygonF([
+                QPointF(cx,           cy - r),
+                QPointF(cx + r * 0.7, cy),
+                QPointF(cx,           cy + r * 0.5),
+                QPointF(cx - r * 0.7, cy),
+            ]))
+
+        elif shape == "raindrop":
+            path = QPainterPath()
+            path.moveTo(cx, cy + r)
+            path.quadTo(cx + r * 0.85, cy,        cx,            cy - r * 0.5)
+            path.quadTo(cx - r * 0.85, cy,        cx,            cy + r)
+            painter.drawPath(path)
+
+        elif shape == "upsidedownhouse":
+            painter.drawPolygon(QPolygonF([
+                QPointF(cx - r,       cy - r * 0.25),
+                QPointF(cx + r,       cy - r * 0.25),
+                QPointF(cx + r * 0.7, cy + r * 0.4),
+                QPointF(cx,           cy + r),
+                QPointF(cx - r * 0.7, cy + r * 0.4),
+            ]))
+
+        else:
+            # Unknown shape → circle fallback
+            painter.drawEllipse(QRectF(cx - r, cy - r, 2 * r, 2 * r))
+
+
 class RuleDetailEditor(QWidget):
     """Form editor for one FilterRule.  Emits rule_changed(index, updated_rule)."""
 
@@ -118,8 +317,9 @@ class RuleDetailEditor(QWidget):
         self._rule: FilterRule | None = None
         self._index: int = -1
         self._loading: bool = False   # guards spurious rule_changed during set_rule
-        self._mm_syncing: bool = False     # re-entrance guard for minimap sync
-        self._alert_syncing: bool = False  # re-entrance guard for alert sound sync
+        self._mm_syncing: bool = False      # re-entrance guard for minimap sync
+        self._alert_syncing: bool = False   # re-entrance guard for alert sound sync
+        self._effect_syncing: bool = False  # re-entrance guard for PlayEffect sync
 
         self._build_ui()
 
@@ -400,8 +600,18 @@ class RuleDetailEditor(QWidget):
             self._minimap_edit.setText(f"{size} {color} {shape}")
         finally:
             self._mm_syncing = False
-        # setText does not trigger editingFinished, so call the slot manually
+        # setText triggers textChanged → _update_mm_preview automatically.
+        # editingFinished is NOT triggered by setText, so call the slot manually.
         self._on_any_field_changed()
+
+    def _update_mm_preview(self) -> None:
+        """Refresh the MinimapPreviewWidget from current minimap text."""
+        parsed = _mm_parse(self._minimap_edit.text())
+        if parsed is None:
+            self._mm_preview.clear()
+        else:
+            size, color, shape = parsed
+            self._mm_preview.set_icon(size, color, shape)
 
     # ------------------------------------------------------------------
     # Alert sound picker sync
@@ -442,16 +652,83 @@ class RuleDetailEditor(QWidget):
         # setText does not trigger editingFinished, so call the slot manually
         self._on_any_field_changed()
 
+    def _update_alert_preview(self) -> None:
+        """Refresh the PlayAlertSound preview label from current text."""
+        parsed = _alert_parse(self._alert_edit.text())
+        if parsed is None:
+            self._alert_preview_lbl.setText("（未設定）")
+            self._alert_preview_lbl.setStyleSheet(
+                "color: #3d4f6b; background: transparent;"
+            )
+        else:
+            sid, vol = parsed
+            self._alert_preview_lbl.setText(f"♪  音效 #{sid}   音量 {vol}")
+            self._alert_preview_lbl.setStyleSheet(
+                "color: #7e8eaf; background: transparent; font-weight: bold;"
+            )
+
+    # ------------------------------------------------------------------
+    # PlayEffect sync
+    # ------------------------------------------------------------------
+
+    def _effect_sync_to_controls(self) -> None:
+        """Parse PlayEffect text and update controls; no-op if invalid."""
+        if self._effect_syncing:
+            return
+        parsed = _effect_parse(self._effect_edit.text())
+        if parsed is None:
+            return
+        self._effect_syncing = True
+        try:
+            color, is_temp = parsed
+            self._effect_color.setCurrentText(color)
+            self._effect_temp_cb.setChecked(is_temp)
+        finally:
+            self._effect_syncing = False
+
+    def _effect_sync_from_controls(self) -> None:
+        """Write control values to PlayEffect text and emit rule_changed."""
+        if self._effect_syncing or self._rule is None:
+            return
+        self._effect_syncing = True
+        try:
+            color = self._effect_color.currentText()
+            temp_suffix = " Temp" if self._effect_temp_cb.isChecked() else ""
+            self._effect_edit.setText(f"{color}{temp_suffix}")
+        finally:
+            self._effect_syncing = False
+        self._on_any_field_changed()
+
+    def _update_effect_preview(self) -> None:
+        """Refresh the PlayEffect preview label from current text."""
+        parsed = _effect_parse(self._effect_edit.text())
+        if parsed is None:
+            self._effect_preview_lbl.setText("（未設定）")
+            self._effect_preview_lbl.setStyleSheet(
+                "color: #3d4f6b; background: #07090f;"
+                "border: 1px dashed #1c2845; border-radius: 3px;"
+            )
+        else:
+            color, is_temp = parsed
+            rgb = _MM_PREVIEW_COLORS.get(color, (180, 180, 180))
+            r, g, b = rgb
+            badge = "  (Temp)" if is_temp else ""
+            self._effect_preview_lbl.setText(f"♦  {color}{badge}")
+            self._effect_preview_lbl.setStyleSheet(
+                f"background: rgba({r},{g},{b},160);"
+                "color: white; font-weight: bold;"
+                "border-radius: 3px; padding: 0 8px;"
+            )
+
     def _build_audio_card(self, vlayout: QVBoxLayout) -> None:
         box, form = self._make_card("音效")
 
-        # Text input (manual entry preserved)
+        # ── PlayAlertSound ────────────────────────────────────────────────
         self._alert_edit = QLineEdit()
         self._alert_edit.setObjectName("RuleDetailAlertSound")
         self._alert_edit.setPlaceholderText("1 300")
         form.addRow("PlayAlertSound", self._alert_edit)
 
-        # Quick-pick spinboxes: Sound ID / Volume
         picker = QWidget()
         picker_layout = QHBoxLayout(picker)
         picker_layout.setContentsMargins(0, 0, 0, 0)
@@ -476,18 +753,65 @@ class RuleDetailEditor(QWidget):
         picker_layout.addStretch()
         form.addRow("快速選擇", picker)
 
-        # Format hint
+        # Sound info preview label
+        self._alert_preview_lbl = QLabel("（未設定）")
+        self._alert_preview_lbl.setObjectName("AlertSoundPreviewLabel")
+        form.addRow("預覽", self._alert_preview_lbl)
+
         self._alert_hint = QLabel("格式：音效ID 音量（例：1 300）")
         self._alert_hint.setObjectName("RuleDetailHintLabel")
         form.addRow("", self._alert_hint)
 
+        # ── PlayEffect ────────────────────────────────────────────────────
+        self._effect_edit = QLineEdit()
+        self._effect_edit.setObjectName("RuleDetailPlayEffect")
+        self._effect_edit.setPlaceholderText("Red")
+        form.addRow("PlayEffect", self._effect_edit)
+
+        effect_picker = QWidget()
+        effect_layout = QHBoxLayout(effect_picker)
+        effect_layout.setContentsMargins(0, 0, 0, 0)
+        effect_layout.setSpacing(6)
+
+        self._effect_color = QComboBox()
+        self._effect_color.setObjectName("EffectColorCombo")
+        self._effect_color.addItems(_MM_COLORS)
+        self._effect_color.setToolTip("特效顏色")
+
+        self._effect_temp_cb = QCheckBox("臨時(Temp)")
+        self._effect_temp_cb.setObjectName("EffectTempCheck")
+        self._effect_temp_cb.setToolTip("加入 Temp 關鍵字（物品拾取前效果消失）")
+
+        effect_layout.addWidget(self._effect_color, stretch=1)
+        effect_layout.addWidget(self._effect_temp_cb)
+        form.addRow("快速選擇", effect_picker)
+
+        # Effect colour preview label
+        self._effect_preview_lbl = QLabel("（未設定）")
+        self._effect_preview_lbl.setObjectName("EffectPreviewLabel")
+        self._effect_preview_lbl.setFixedHeight(26)
+        self._effect_preview_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        form.addRow("預覽", self._effect_preview_lbl)
+
+        self._effect_hint = QLabel("格式：顏色 [Temp]（例：Red Temp）")
+        self._effect_hint.setObjectName("RuleDetailHintLabel")
+        form.addRow("", self._effect_hint)
+
         vlayout.addWidget(box)
 
-        # Connections
+        # Connections — PlayAlertSound
         self._alert_edit.textChanged.connect(self._alert_sync_to_spins)
+        self._alert_edit.textChanged.connect(self._update_alert_preview)
         self._alert_edit.editingFinished.connect(self._on_any_field_changed)
         self._alert_id_spin.valueChanged.connect(self._alert_sync_from_spins)
         self._alert_vol_spin.valueChanged.connect(self._alert_sync_from_spins)
+
+        # Connections — PlayEffect
+        self._effect_edit.textChanged.connect(self._effect_sync_to_controls)
+        self._effect_edit.textChanged.connect(self._update_effect_preview)
+        self._effect_edit.editingFinished.connect(self._on_any_field_changed)
+        self._effect_color.currentTextChanged.connect(self._effect_sync_from_controls)
+        self._effect_temp_cb.stateChanged.connect(self._effect_sync_from_controls)
 
     def _build_minimap_card(self, vlayout: QVBoxLayout) -> None:
         box, form = self._make_card("小地圖")
@@ -524,6 +848,10 @@ class RuleDetailEditor(QWidget):
         picker_layout.addWidget(self._mm_shape, stretch=1)
         form.addRow("快速選擇", picker)
 
+        # Visual icon preview
+        self._mm_preview = MinimapPreviewWidget()
+        form.addRow("預覽", self._mm_preview)
+
         # Format hint
         self._minimap_hint = QLabel("格式：大小 顏色 形狀（例：1 Red Circle）")
         self._minimap_hint.setObjectName("RuleDetailHintLabel")
@@ -533,6 +861,7 @@ class RuleDetailEditor(QWidget):
 
         # Connections
         self._minimap_edit.textChanged.connect(self._mm_sync_to_dropdowns)
+        self._minimap_edit.textChanged.connect(self._update_mm_preview)
         self._minimap_edit.editingFinished.connect(self._on_any_field_changed)
         for combo in (self._mm_size, self._mm_color, self._mm_shape):
             combo.currentTextChanged.connect(self._mm_sync_from_dropdowns)
@@ -613,6 +942,7 @@ class RuleDetailEditor(QWidget):
         self._bordercolor_edit.setText(self._get_from_list(rule.actions, "SetBorderColor"))
         self._bgcolor_edit.setText(self._get_from_list(rule.actions, "SetBackgroundColor"))
         self._alert_edit.setText(self._get_from_list(rule.actions, "PlayAlertSound"))
+        self._effect_edit.setText(self._get_from_list(rule.actions, "PlayEffect"))
         self._minimap_edit.setText(self._get_from_list(rule.actions, "MinimapIcon"))
 
     def _build_rule_from_fields(self) -> FilterRule:
@@ -648,6 +978,9 @@ class RuleDetailEditor(QWidget):
         )
         rule.actions = self._update_in_list(
             rule.actions, "PlayAlertSound", self._alert_edit.text()
+        )
+        rule.actions = self._update_in_list(
+            rule.actions, "PlayEffect", self._effect_edit.text()
         )
         rule.actions = self._update_in_list(
             rule.actions, "MinimapIcon", self._minimap_edit.text()
