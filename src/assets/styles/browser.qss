@@ -1,5 +1,5 @@
 /* ============================================================
-   Rule Card Browser — v2.2.0
+   Rule Card Browser — v3.0.0  (P13.3 Rule Card Browser V2)
    Loaded automatically by bootstrap.apply_theme() alongside
    base.qss / shell.qss / sidebar.qss (alphabetical order).
    ============================================================ */
@@ -84,6 +84,39 @@
     color: #ef4444;
     font-size: 10px;
     font-style: italic;
+}
+
+/* ── P13.3 detail row ── */
+
+#RuleCardDetail {
+    color: #7a8fa8;
+    font-size: 10px;
+    font-style: italic;
+}
+
+/* ── P13.3 extra-condition count badge ── */
+
+#RuleCardExtraCount {
+    color: #94a3b8;
+    background: #1e2535;
+    border: 1px solid #2a3347;
+    border-radius: 3px;
+    font-size: 9px;
+    padding: 1px 4px;
+    font-weight: bold;
+}
+
+/* ── P13.3 compact effect badges ── */
+
+#RuleCardFontBadge,
+#RuleCardSoundBadge,
+#RuleCardMinimapBadge {
+    color: #64748b;
+    background: #131722;
+    border: 1px solid #1e2435;
+    border-radius: 3px;
+    font-size: 9px;
+    padding: 1px 4px;
 }
 
 /* ── Section header (non-selectable divider row) ── */
