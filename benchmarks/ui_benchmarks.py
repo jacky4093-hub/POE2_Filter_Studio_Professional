@@ -376,7 +376,7 @@ def build_report(results: list[UIResult]) -> str:
     # ── 3. Search Highlight ───────────────────────────────────────────────
     lines += [
         "",
-        "## 3. Search Highlight (set_highlights + tree refresh)",
+        "## 3. Search Highlight (set_highlights — partial background update)",
         "",
         "| Rules | Hits | Median | Min | Max |",
         "|------:|-----:|-------:|----:|----:|",
