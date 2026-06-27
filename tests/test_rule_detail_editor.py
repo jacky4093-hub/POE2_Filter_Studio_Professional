@@ -1470,3 +1470,184 @@ class TestP138AlertSoundPicker:
     def test_parse_empty(self, qapp):
         from ui.rule_detail_editor import _alert_parse
         assert _alert_parse("") is None
+
+
+# ===========================================================================
+# TestP153VisualColorEditor  (P15.3 新增)
+# ===========================================================================
+
+class TestP153ColorPickButtons:
+    """P15.3: explicit Pick buttons exist and are QPushButton instances."""
+
+    def test_textcolor_pick_btn_exists(self, qapp):
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_textcolor_btn")
+
+    def test_textcolor_pick_btn_is_qpushbutton(self, qapp):
+        from PySide6.QtWidgets import QPushButton
+        ed = _make_editor(qapp)
+        assert isinstance(ed._textcolor_btn, QPushButton)
+
+    def test_textcolor_pick_btn_objectname(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._textcolor_btn.objectName() == "ColorPickTextBtn"
+
+    def test_bordercolor_pick_btn_exists(self, qapp):
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_bordercolor_btn")
+
+    def test_bordercolor_pick_btn_objectname(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._bordercolor_btn.objectName() == "ColorPickBorderBtn"
+
+    def test_bgcolor_pick_btn_exists(self, qapp):
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_bgcolor_btn")
+
+    def test_bgcolor_pick_btn_objectname(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._bgcolor_btn.objectName() == "ColorPickBgBtn"
+
+    def test_pick_buttons_have_text(self, qapp):
+        ed = _make_editor(qapp)
+        for btn in (ed._textcolor_btn, ed._bordercolor_btn, ed._bgcolor_btn):
+            assert btn.text().strip() != ""
+
+    def test_pick_btn_tooltip_set(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._textcolor_btn.toolTip() != ""
+
+
+class TestP153ColorPickBtnAction:
+    """P15.3: Pick button opens _on_swatch_clicked with correct arguments."""
+
+    def _monkeypatched_ed(self, qapp, monkeypatch):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetTextColor", "100 150 200 255"]]), index=0)
+        calls = []
+        monkeypatch.setattr(
+            ed, "_on_swatch_clicked",
+            lambda fk, edit: calls.append((fk, edit))
+        )
+        return ed, calls
+
+    def test_textcolor_btn_calls_on_swatch_clicked(self, qapp, monkeypatch):
+        ed, calls = self._monkeypatched_ed(qapp, monkeypatch)
+        ed._textcolor_btn.click()
+        assert len(calls) == 1
+        assert calls[0][0] == "SetTextColor"
+        assert calls[0][1] is ed._textcolor_edit
+
+    def test_bordercolor_btn_calls_on_swatch_clicked(self, qapp, monkeypatch):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetBorderColor", "0 255 0 200"]]), index=0)
+        calls = []
+        monkeypatch.setattr(
+            ed, "_on_swatch_clicked",
+            lambda fk, edit: calls.append((fk, edit))
+        )
+        ed._bordercolor_btn.click()
+        assert len(calls) == 1
+        assert calls[0][0] == "SetBorderColor"
+        assert calls[0][1] is ed._bordercolor_edit
+
+    def test_bgcolor_btn_calls_on_swatch_clicked(self, qapp, monkeypatch):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetBackgroundColor", "0 0 0 180"]]), index=0)
+        calls = []
+        monkeypatch.setattr(
+            ed, "_on_swatch_clicked",
+            lambda fk, edit: calls.append((fk, edit))
+        )
+        ed._bgcolor_btn.click()
+        assert len(calls) == 1
+        assert calls[0][0] == "SetBackgroundColor"
+        assert calls[0][1] is ed._bgcolor_edit
+
+    def test_pick_btn_accept_writes_rgba_to_field(self, qapp, monkeypatch):
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetTextColor", "0 0 0 255"]]), index=0)
+        chosen = QColor(10, 20, 30, 200)
+        monkeypatch.setattr(ed, "_choose_color", lambda fk, ct: chosen)
+        ed._textcolor_btn.click()
+        assert ed._textcolor_edit.text() == "10 20 30 200"
+
+    def test_pick_btn_cancel_does_not_change_field(self, qapp, monkeypatch):
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetTextColor", "255 0 0 255"]]), index=0)
+        monkeypatch.setattr(ed, "_choose_color", lambda fk, ct: QColor())
+        ed._textcolor_btn.click()
+        assert ed._textcolor_edit.text() == "255 0 0 255"
+
+    def test_pick_btn_accept_updates_swatch(self, qapp, monkeypatch):
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetTextColor", "0 0 0 255"]]), index=0)
+        chosen = QColor(255, 100, 0, 200)
+        monkeypatch.setattr(ed, "_choose_color", lambda fk, ct: chosen)
+        ed._textcolor_btn.click()
+        style = ed._textcolor_swatch.styleSheet()
+        assert "255" in style
+        assert "transparent" not in style
+
+    def test_pick_btn_accept_emits_rule_changed(self, qapp, monkeypatch):
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        chosen = QColor(50, 60, 70, 180)
+        monkeypatch.setattr(ed, "_choose_color", lambda fk, ct: chosen)
+        emitted = []
+        ed.rule_changed.connect(lambda idx, rule: emitted.append((idx, rule)))
+        ed._textcolor_btn.click()
+        assert len(emitted) == 1
+
+
+class TestP153ColorPickLayout:
+    """P15.3: swatch is positioned left of text field in the row layout."""
+
+    def test_swatch_fixed_size(self, qapp):
+        ed = _make_editor(qapp)
+        swatch = ed._textcolor_swatch
+        assert swatch.width() == 22
+        assert swatch.height() == 20
+
+    def test_pick_btn_fixed_width(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._textcolor_btn.width() == 48
+
+    def test_three_pick_btns_have_same_width(self, qapp):
+        ed = _make_editor(qapp)
+        widths = {
+            ed._textcolor_btn.width(),
+            ed._bordercolor_btn.width(),
+            ed._bgcolor_btn.width(),
+        }
+        assert len(widths) == 1
+
+
+class TestP153SwatchStillClickable:
+    """P15.3: swatch click still works (eventFilter path preserved)."""
+
+    def test_swatch_still_has_pointing_hand_cursor(self, qapp):
+        from PySide6.QtCore import Qt
+        ed = _make_editor(qapp)
+        for swatch in (
+            ed._textcolor_swatch,
+            ed._bordercolor_swatch,
+            ed._bgcolor_swatch,
+        ):
+            assert swatch.cursor().shape() == Qt.CursorShape.PointingHandCursor
+
+    def test_on_swatch_clicked_still_calls_choose_color(self, qapp, monkeypatch):
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetBorderColor", "0 0 0 255"]]), index=0)
+        calls = []
+        monkeypatch.setattr(
+            ed, "_choose_color",
+            lambda fk, ct: (calls.append(fk), QColor())[1]
+        )
+        ed._on_swatch_clicked("SetBorderColor", ed._bordercolor_edit)
+        assert calls == ["SetBorderColor"]

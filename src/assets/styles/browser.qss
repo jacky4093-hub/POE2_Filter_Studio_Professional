@@ -1,7 +1,5 @@
 /* ============================================================
-   Rule Card Browser — v3.2.0  (P15.1 Icon System)
-   Loaded automatically by bootstrap.apply_theme() alongside
-   base.qss / shell.qss / sidebar.qss (alphabetical order).
+   Rule Card Browser — v3.2.0  (P15.2 Premium Theme)
    ============================================================ */
 
 /* ── Action buttons ── */
@@ -9,103 +7,117 @@
 QPushButton#BtnAdd,
 QPushButton#BtnCopy,
 QPushButton#BtnMove {
-    background: #1e2538;
-    color: #94a3b8;
-    border: 1px solid #2a3347;
-    border-radius: 3px;
+    background: #111827;
+    color: #7e8eaf;
+    border: 1px solid #1c2845;
+    border-radius: 4px;
     font-size: 11px;
-    padding: 0 8px;
+    padding: 0 10px;
 }
 
 QPushButton#BtnAdd:hover,
 QPushButton#BtnCopy:hover,
 QPushButton#BtnMove:hover {
-    background: #2a3450;
-    border-color: #3b4a6b;
-    color: #cbd5e1;
+    background: #1a2640;
+    border-color: #253558;
+    color: #dde4f0;
 }
 
 QPushButton#BtnAdd:disabled,
 QPushButton#BtnCopy:disabled,
 QPushButton#BtnMove:disabled {
-    background: #111520;
-    color: #2d3748;
-    border-color: #1a1f2e;
+    background: #09111a;
+    color: #283040;
+    border-color: #131d2e;
 }
 
-/* Delete — danger style */
+/* ── Delete / danger button ── */
 
 QPushButton#BtnDanger {
-    background: #1e1214;
-    color: #f87171;
-    border: 1px solid #7f1d1d;
-    border-radius: 3px;
+    background: #120b15;
+    color: #ef4444;
+    border: 1px solid #4d1515;
+    border-radius: 4px;
     font-size: 11px;
-    padding: 0 8px;
+    padding: 0 10px;
 }
 
 QPushButton#BtnDanger:hover {
-    background: #2d1517;
+    background: #1d1018;
     border-color: #ef4444;
+    color: #fca5a5;
 }
 
 QPushButton#BtnDanger:disabled {
-    background: #0f0d11;
-    color: #3b2a2a;
-    border-color: #1e1215;
+    background: #0a0b0f;
+    color: #2d1c1c;
+    border-color: #1a1218;
 }
 
-/* ── Scroll area & content background ── */
+/* ── Scroll area & content ── */
 
 #RuleCardScrollArea {
-    background: #0f1117;
-    border: 1px solid #1e2435;
-    border-radius: 2px;
+    background: #07090f;
+    border: 1px solid #1c2845;
+    border-radius: 3px;
 }
 
 #RuleCardContent {
-    background: #0f1117;
+    background: #07090f;
 }
 
-/* ── Individual card ── */
+/* ── Individual card — Default ── */
 
 #RuleCard {
-    background: #161b27;
-    border: 1px solid #1e2435;
-    border-radius: 4px;
-    margin: 0px 2px;
+    background: #0e1625;
+    border: 1px solid #1c2845;
+    border-radius: 5px;
+    margin: 1px 3px;
 }
 
 #RuleCard:hover {
-    background: #1e2538;
-    border-color: #334155;
+    background: #131f38;
+    border-color: #253558;
 }
 
-/* Selected state (cardSelected dynamic property) */
+/* ── Selected state ── */
+
 #RuleCard[cardSelected="true"] {
-    background: #1a3558;
+    background: #0b1e47;
     border-color: #3b82f6;
+    border-left: 3px solid #3b82f6;
 }
 
-/* Highlight: cursor match */
+/* ── Search highlight — cursor match ── */
+
 #RuleCard[cardHighlight="current"] {
-    background: #4a3200;
+    background: #1f1400;
     border-color: #f59e0b;
+    border-left: 3px solid #f59e0b;
 }
 
-/* Highlight: other search match */
+/* ── Search highlight — other matches ── */
+
 #RuleCard[cardHighlight="match"] {
-    background: #271b00;
-    border-color: #78350f;
+    background: #141000;
+    border-color: #92400e;
 }
 
-/* Disabled rule — lower contrast */
+/* ── Disabled rule ── */
+
 #RuleCard[cardDisabled="true"] {
-    background: #111520;
-    border-color: #1a1f2e;
+    background: #090c12;
+    border-color: #141c2a;
+    opacity: 0.6;
 }
 
-/* ── P15.1 action icon beside badge ── */
+/* ── Card text elements ── */
+
+#RuleCardNum {
+    color: #3d4f6b;
+    font-size: 10px;
+    min-width: 28px;
+}
 
 #RuleCardActionIcon {
     border: none;
@@ -113,88 +125,84 @@ QPushButton#BtnDanger:disabled {
     padding: 0;
 }
 
-/* ── Text elements inside each card ── */
-
-#RuleCardNum {
-    color: #475569;
-    font-size: 11px;
-    min-width: 30px;
-}
-
 #RuleCardAction {
-    font-size: 11px;
-    min-width: 48px;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 46px;
 }
 
 #RuleCardLabel {
-    color: #cbd5e1;
+    color: #c0cce6;
     font-size: 12px;
 }
 
 #RuleCard[cardDisabled="true"] #RuleCardLabel {
-    color: #475569;
+    color: #3d4f6b;
 }
 
 #RuleCardCategory {
     font-size: 10px;
+    font-weight: 500;
 }
 
 #RuleCardDisabledTag {
     color: #ef4444;
     font-size: 10px;
     font-style: italic;
+    font-weight: 600;
 }
 
-/* ── P13.3 detail row ── */
+/* ── Detail row ── */
 
 #RuleCardDetail {
-    color: #7a8fa8;
+    color: #4d6080;
     font-size: 10px;
     font-style: italic;
 }
 
-/* ── P13.3 extra-condition count badge ── */
+/* ── Extra-condition count badge ── */
 
 #RuleCardExtraCount {
-    color: #94a3b8;
-    background: #1e2535;
-    border: 1px solid #2a3347;
+    color: #7e8eaf;
+    background: #0e1625;
+    border: 1px solid #1c2845;
     border-radius: 3px;
     font-size: 9px;
     padding: 1px 4px;
     font-weight: bold;
 }
 
-/* ── P13.3 compact effect badges ── */
+/* ── Effect badges (FontSize / Sound / Minimap) ── */
 
 #RuleCardFontBadge,
 #RuleCardSoundBadge,
 #RuleCardMinimapBadge {
-    color: #64748b;
-    background: #131722;
-    border: 1px solid #1e2435;
+    color: #4d6080;
+    background: #0a0e18;
+    border: 1px solid #1c2845;
     border-radius: 3px;
     font-size: 9px;
     padding: 1px 4px;
 }
 
-/* ── Section header (non-selectable divider row) ── */
+/* ── Section header ── */
 
 #RuleCardSectionHeader {
-    color: #ccaa55;
+    color: #c8a840;
     background: transparent;
     font-weight: bold;
-    font-size: 11px;
-    padding: 6px 8px 2px 8px;
-    border-bottom: 1px solid #2a2f3c;
-    margin-top: 6px;
-    margin-bottom: 2px;
+    font-size: 10px;
+    letter-spacing: 0.8px;
+    padding: 8px 8px 3px 8px;
+    border-bottom: 1px solid #1c2845;
+    margin-top: 8px;
+    margin-bottom: 3px;
 }
 
-/* ── Empty state label ── */
+/* ── Empty state ── */
 
 #RuleCardEmptyLabel {
-    color: #3b4558;
+    color: #253558;
     font-size: 13px;
-    padding: 40px;
+    padding: 48px;
 }

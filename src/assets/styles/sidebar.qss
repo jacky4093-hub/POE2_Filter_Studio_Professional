@@ -1,18 +1,23 @@
-/* POE2 Filter Studio — v2.2.0 category sidebar (P15.1 icon system) */
+/* ============================================================
+   POE2 Filter Studio — v3.0.0  P15.2 Premium Theme
+   Category Sidebar
+   ============================================================ */
 
 #CategorySidebar {
-    background-color: #0B0F17;
-    border: 1px solid #263244;
-    border-radius: 4px;
+    background-color: #0d1117;
+    border: 1px solid #1c2845;
+    border-radius: 5px;
     min-width: 140px;
     max-width: 200px;
 }
 
 #CategorySidebarTitle {
-    color: #e2e8f0;
+    color: #7e8eaf;
     font-weight: bold;
-    font-size: 13px;
-    padding: 12px 8px 4px 8px;
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    padding: 12px 10px 6px 10px;
     background: transparent;
 }
 
@@ -20,23 +25,26 @@
     background-color: transparent;
     border: none;
     outline: none;
-    padding: 4px 0;
+    padding: 4px 4px;
 }
 
 #CategorySidebarList::item {
-    color: #94a3b8;
-    padding: 6px 10px;
+    color: #7e8eaf;
+    padding: 7px 8px;
     border-left: 3px solid transparent;
-    border-radius: 0;
+    border-radius: 4px;
+    margin: 1px 0;
 }
 
 #CategorySidebarList::item:hover {
-    background-color: #1e2a45;
-    color: #e2e8f0;
+    background-color: #141e30;
+    color: #b8c8e4;
+    border-left: 3px solid transparent;
 }
 
 #CategorySidebarList::item:selected {
-    background-color: #253350;
-    color: #e2e8f0;
-    border-left: 3px solid #7C3AED;
+    background-color: rgba(124, 58, 237, 0.18);
+    color: #dde4f0;
+    border-left: 3px solid #7c3aed;
+    font-weight: bold;
 }

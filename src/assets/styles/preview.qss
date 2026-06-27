@@ -1,83 +1,87 @@
 /* ============================================================
-   Live Preview Panel — v2.0.0  (P13.2)
-   Loaded automatically by bootstrap.apply_theme() (sorted glob).
+   Live Preview Panel — v3.0.0  (P15.2 Premium Theme)
    ============================================================ */
 
 /* ── Outer widget ── */
 
 #PreviewPanel {
-    background: #0f1117;
+    background: #07090f;
 }
 
 /* ── Header ── */
 
 #PreviewHeader {
     background: transparent;
-    border-bottom: 1px solid #1e2435;
+    border-bottom: 1px solid #1c2845;
+    padding-bottom: 6px;
 }
 
 #PreviewTitle {
-    color: #6b7fa3;
-    font-size: 10px;
+    color: #4d6080;
+    font-size: 9px;
     font-weight: bold;
-    letter-spacing: 1px;
-    padding: 0 0 4px 0;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
 }
 
-/* ── Action badge (dynamic colour set inline) ── */
+/* ── Action badge (colour set inline by widget) ── */
 
 #PreviewActionBadge {
-    border-radius: 3px;
-    padding: 2px 8px;
+    border-radius: 4px;
+    padding: 3px 10px;
     font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
 }
 
 /* ── Disabled banner ── */
 
 #PreviewDisabledBanner {
     color: #f59e0b;
-    background: #1c1500;
-    border: 1px solid #78350f;
+    background: #130e00;
+    border: 1px solid #4d3300;
     border-radius: 4px;
     font-size: 10px;
     font-weight: bold;
-    padding: 3px 6px;
+    padding: 4px 8px;
 }
 
-/* ── Condition label ── */
+/* ── Condition label row ── */
 
 #PreviewConditionLabel {
-    color: #4a5568;
+    color: #3d4f6b;
     font-size: 10px;
     font-style: italic;
 }
 
-/* ── Info badges ── */
+/* ── Info badges (FontSize / Sound / Minimap preview) ── */
 
 #PreviewBadge {
-    color: #94a3b8;
-    background: #161b27;
-    border: 1px solid #1e2435;
-    border-radius: 3px;
-    padding: 2px 6px;
-    font-size: 10px;
+    color: #7e8eaf;
+    background: #0e1625;
+    border: 1px solid #1c2845;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 500;
 }
 
-/* ── Unknown actions / lines ── */
+/* ── Unknown actions / raw text ── */
 
 #PreviewUnknownLabel {
-    color: #4a5568;
-    background: #0d1117;
-    border: 1px solid #1e2435;
+    color: #3d4f6b;
+    background: #09090f;
+    border: 1px solid #141e2e;
     border-radius: 3px;
-    font-family: Consolas, "Courier New", monospace;
+    font-family: Consolas, "Cascadia Code", "Courier New", monospace;
     font-size: 10px;
-    padding: 4px 6px;
+    padding: 4px 8px;
 }
 
 /* ── Empty state ── */
 
 #PreviewEmptyLabel {
-    color: #2d3748;
+    color: #1c2845;
     font-size: 12px;
+    letter-spacing: 0.3px;
 }

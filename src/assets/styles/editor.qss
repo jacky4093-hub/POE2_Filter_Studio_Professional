@@ -1,128 +1,137 @@
 /* ============================================================
-   Rule Detail Editor — v7.0.0  (P13.8 Alert Sound Picker)
-   Loaded automatically by bootstrap.apply_theme() (sorted glob).
+   Rule Detail Editor — v8.0.0  (P15.2 Premium Theme)
    ============================================================ */
 
 /* ── Outer widget ── */
 
 #RuleDetailEditor {
-    background: #0f1117;
+    background: #0d1117;
 }
 
 /* ── Empty state ── */
 
 #RuleDetailEmptyPage {
-    background: #0f1117;
+    background: #07090f;
 }
 
 #RuleDetailEmptyIcon {
-    color: #2a3347;
-    font-size: 40px;
+    color: #1c2845;
+    font-size: 42px;
 }
 
 #RuleDetailEmptyLabel {
-    color: #4a5568;
+    color: #3d4f6b;
     font-size: 14px;
     font-weight: bold;
 }
 
 #RuleDetailEmptyHint {
-    color: #2d3748;
+    color: #253558;
     font-size: 11px;
 }
 
 /* ── Scroll area & content ── */
 
 #RuleDetailScrollArea {
-    background: #0f1117;
+    background: #07090f;
     border: none;
 }
 
 #RuleDetailContent {
-    background: #0f1117;
+    background: #07090f;
 }
 
 /* ── Title bar ── */
 
 #RuleEditorTitleBar {
     background: transparent;
-    border-bottom: 1px solid #1e2435;
-    margin-bottom: 2px;
+    border-bottom: 1px solid #1c2845;
+    padding-bottom: 4px;
+    margin-bottom: 4px;
 }
 
 #RuleEditorTitle {
-    color: #94a3b8;
-    font-size: 12px;
+    color: #7e8eaf;
+    font-size: 10px;
     font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
 }
 
 /* ── Section card (QGroupBox) ── */
 
 QGroupBox#RuleEditorCard {
-    background: #131722;
-    border: 1px solid #1e2435;
+    background: #0e1625;
+    border: 1px solid #1c2845;
+    border-left: 3px solid #253558;
     border-radius: 5px;
-    margin-top: 8px;
-    padding-top: 6px;
+    margin-top: 10px;
+    padding-top: 8px;
     font-size: 10px;
     font-weight: bold;
-    color: #6b7fa3;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.8px;
+    color: #4d6080;
 }
 
 QGroupBox#RuleEditorCard::title {
     subcontrol-origin: margin;
     subcontrol-position: top left;
-    left: 10px;
-    padding: 0 4px;
-    color: #6b7fa3;
-    background: #0f1117;
+    left: 12px;
+    padding: 0 6px;
+    color: #4d6080;
+    background: #07090f;
+}
+
+/* ── Condition group: blue-tinted accent ── */
+
+QGroupBox#RuleEditorCard[title="條件"] {
+    border-left-color: #3b82f6;
 }
 
 /* ── Form labels inside cards ── */
 
 QGroupBox#RuleEditorCard QLabel {
-    color: #7a8fa8;
+    color: #6a7a96;
     font-size: 11px;
     font-weight: normal;
 }
 
-/* ── Inputs ── */
+/* ── Inputs inside cards ── */
 
 QGroupBox#RuleEditorCard QLineEdit {
-    background: #161b27;
-    color: #cbd5e1;
-    border: 1px solid #2a3347;
+    background: #0a0e18;
+    color: #c8d8f0;
+    border: 1px solid #1c2845;
     border-radius: 3px;
-    padding: 3px 6px;
+    padding: 3px 7px;
     font-size: 12px;
     selection-background-color: #1e3a5f;
 }
 
 QGroupBox#RuleEditorCard QLineEdit:focus {
     border-color: #3b82f6;
-    background: #1a2035;
+    background: #0c1424;
 }
 
 QGroupBox#RuleEditorCard QLineEdit:hover {
-    border-color: #334155;
+    border-color: #253558;
 }
 
 /* ── Checkbox ── */
 
 QGroupBox#RuleEditorCard QCheckBox {
-    color: #cbd5e1;
+    color: #c0cce6;
     font-size: 12px;
     font-weight: normal;
-    spacing: 6px;
+    spacing: 7px;
 }
 
 QGroupBox#RuleEditorCard QCheckBox::indicator {
     width: 14px;
     height: 14px;
-    border: 1px solid #2a3347;
+    border: 1px solid #253558;
     border-radius: 3px;
-    background: #161b27;
+    background: #0a0e18;
 }
 
 QGroupBox#RuleEditorCard QCheckBox::indicator:checked {
@@ -131,24 +140,24 @@ QGroupBox#RuleEditorCard QCheckBox::indicator:checked {
 }
 
 QGroupBox#RuleEditorCard QCheckBox::indicator:hover {
-    border-color: #475569;
+    border-color: #3558a0;
 }
 
-/* ── Combobox ── */
+/* ── ComboBox inside cards ── */
 
 QGroupBox#RuleEditorCard QComboBox {
-    background: #161b27;
-    color: #cbd5e1;
-    border: 1px solid #2a3347;
+    background: #0a0e18;
+    color: #c8d8f0;
+    border: 1px solid #1c2845;
     border-radius: 3px;
-    padding: 3px 6px;
+    padding: 3px 7px;
     font-size: 12px;
     font-weight: normal;
     min-width: 90px;
 }
 
 QGroupBox#RuleEditorCard QComboBox:hover {
-    border-color: #334155;
+    border-color: #253558;
 }
 
 QGroupBox#RuleEditorCard QComboBox:focus {
@@ -161,18 +170,18 @@ QGroupBox#RuleEditorCard QComboBox::drop-down {
 }
 
 QGroupBox#RuleEditorCard QComboBox QAbstractItemView {
-    background: #161b27;
-    color: #cbd5e1;
-    border: 1px solid #2a3347;
+    background: #111827;
+    color: #c8d8f0;
+    border: 1px solid #253558;
     selection-background-color: #1e3a5f;
 }
 
-/* ── SpinBox (SetFontSize) ── */
+/* ── SpinBox inside cards ── */
 
 QGroupBox#RuleEditorCard QSpinBox {
-    background: #161b27;
-    color: #cbd5e1;
-    border: 1px solid #2a3347;
+    background: #0a0e18;
+    color: #c8d8f0;
+    border: 1px solid #1c2845;
     border-radius: 3px;
     padding: 3px 6px;
     font-size: 12px;
@@ -182,29 +191,58 @@ QGroupBox#RuleEditorCard QSpinBox {
 
 QGroupBox#RuleEditorCard QSpinBox:focus {
     border-color: #3b82f6;
-    background: #1a2035;
+    background: #0c1424;
 }
 
 QGroupBox#RuleEditorCard QSpinBox:hover {
-    border-color: #334155;
+    border-color: #253558;
 }
 
 QGroupBox#RuleEditorCard QSpinBox::up-button,
 QGroupBox#RuleEditorCard QSpinBox::down-button {
-    background: #1e2538;
+    background: #161f30;
     border: none;
     width: 16px;
 }
 
 QGroupBox#RuleEditorCard QSpinBox::up-button:hover,
 QGroupBox#RuleEditorCard QSpinBox::down-button:hover {
-    background: #2a3450;
+    background: #1e2e48;
 }
 
-/* ── Colour swatch preview label ── */
+/* ── Colour swatch preview ── */
 
 #ColorSwatch {
-    border-radius: 2px;
+    border: 1px solid #253558;
+    border-radius: 3px;
+}
+
+/* ── Colour pick buttons (P15.3) ── */
+
+#ColorPickTextBtn,
+#ColorPickBorderBtn,
+#ColorPickBgBtn {
+    background: #111827;
+    color: #7e8eaf;
+    border: 1px solid #1c2845;
+    border-radius: 3px;
+    font-size: 11px;
+    padding: 2px 6px;
+}
+
+#ColorPickTextBtn:hover,
+#ColorPickBorderBtn:hover,
+#ColorPickBgBtn:hover {
+    background: #1a2640;
+    border-color: #3b82f6;
+    color: #dde4f0;
+}
+
+#ColorPickTextBtn:pressed,
+#ColorPickBorderBtn:pressed,
+#ColorPickBgBtn:pressed {
+    background: #0c1424;
+    border-color: #3b82f6;
 }
 
 /* ── Alert sound spinboxes (compact) ── */
@@ -237,29 +275,30 @@ QGroupBox#RuleEditorCard QSpinBox::down-button:hover {
 /* ── Format hint labels ── */
 
 #RuleDetailHintLabel {
-    color: #3b4558;
+    color: #253558;
     font-size: 10px;
     font-style: italic;
 }
 
-/* ── Preview text area ── */
+/* ── Raw filter preview text area ── */
 
 #RuleDetailPreview {
-    background: #0a0d14;
-    color: #94a3b8;
-    border: 1px solid #1e2435;
-    border-radius: 3px;
-    font-family: Consolas, "Courier New", monospace;
+    background: #040710;
+    color: #6a8ab0;
+    border: 1px solid #1c2845;
+    border-radius: 4px;
+    font-family: Consolas, "Cascadia Code", "Courier New", monospace;
     font-size: 11px;
-    padding: 4px;
+    padding: 6px 8px;
+    line-height: 1.5;
 }
 
 #RuleDetailPreview QScrollBar:vertical {
-    background: #0a0d14;
+    background: #040710;
     width: 6px;
 }
 
 #RuleDetailPreview QScrollBar::handle:vertical {
-    background: #2a3347;
+    background: #1c2845;
     border-radius: 3px;
 }

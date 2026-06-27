@@ -48,7 +48,7 @@ import copy
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QFormLayout,
     QGroupBox, QLabel, QCheckBox, QComboBox, QLineEdit, QPlainTextEdit,
-    QSpinBox, QStackedWidget, QColorDialog,
+    QSpinBox, QStackedWidget, QColorDialog, QPushButton,
 )
 from PySide6.QtCore import Signal, Qt, QEvent
 from PySide6.QtGui import QColor
@@ -283,31 +283,45 @@ class RuleDetailEditor(QWidget):
         self._class_edit.editingFinished.connect(self._on_any_field_changed)
         self._basetype_edit.editingFinished.connect(self._on_any_field_changed)
 
-    def _make_color_row(self, obj_name: str, placeholder: str) -> tuple:
-        """Return (container_widget, QLineEdit, swatch_QLabel) for a colour field.
+    def _make_color_row(self, obj_name: str, placeholder: str, btn_obj_name: str) -> tuple:
+        """Return (container, QLineEdit, swatch_QLabel, pick_QPushButton).
 
-        The swatch is clickable: it has a PointingHand cursor and emits mouse
-        press events that eventFilter() converts into a _on_swatch_clicked call.
-        The tooltip (per-field text) is set by the caller after this returns.
+        Layout: [swatch]  [RGBA text field]  [Pick button]
+
+        - Swatch: live colour preview; also clickable via eventFilter.
+        - Text field: free-form RGBA entry (preserved from P13.4).
+        - Pick button: explicit "選色" trigger; more discoverable than swatch-click.
+
+        The swatch tooltip is set by the caller after this returns.
         """
         container = QWidget()
         hlayout = QHBoxLayout(container)
         hlayout.setContentsMargins(0, 0, 0, 0)
         hlayout.setSpacing(4)
 
+        # Colour preview swatch — visual anchor, also clickable
+        swatch = QLabel()
+        swatch.setObjectName("ColorSwatch")
+        swatch.setFixedSize(22, 20)
+        swatch.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._update_one_swatch(swatch, "")
+        hlayout.addWidget(swatch)
+
+        # Free-form RGBA text input
         edit = QLineEdit()
         edit.setObjectName(obj_name)
         edit.setPlaceholderText(placeholder)
         hlayout.addWidget(edit, stretch=1)
 
-        swatch = QLabel()
-        swatch.setObjectName("ColorSwatch")
-        swatch.setFixedSize(20, 18)
-        swatch.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._update_one_swatch(swatch, "")
-        hlayout.addWidget(swatch)
+        # Explicit pick button
+        btn = QPushButton("選色")
+        btn.setObjectName(btn_obj_name)
+        btn.setFixedWidth(48)
+        btn.setFixedHeight(24)
+        btn.setToolTip("開啟顏色選取器（支援 Alpha 透明度）")
+        hlayout.addWidget(btn)
 
-        return container, edit, swatch
+        return container, edit, swatch, btn
 
     def _build_appearance_card(self, vlayout: QVBoxLayout) -> None:
         box, form = self._make_card("外觀")
@@ -319,26 +333,32 @@ class RuleDetailEditor(QWidget):
         self._fontsize_spin.setSpecialValueText("—")
         form.addRow("SetFontSize", self._fontsize_spin)
 
-        # Colour fields: QLineEdit + clickable swatch
-        tc_row, self._textcolor_edit, self._textcolor_swatch = self._make_color_row(
-            "RuleDetailTextColor", "255 200 0 255"
-        )
-        self._textcolor_swatch.setToolTip("點選文字顏色")
+        # Colour fields: [swatch] [RGBA text] [Pick button]
+        tc_row, self._textcolor_edit, self._textcolor_swatch, self._textcolor_btn = \
+            self._make_color_row("RuleDetailTextColor", "255 200 0 255", "ColorPickTextBtn")
+        self._textcolor_swatch.setToolTip("點選文字顏色預覽塊開啟選色器")
         self._textcolor_swatch.installEventFilter(self)
+        self._textcolor_btn.clicked.connect(
+            lambda: self._on_swatch_clicked("SetTextColor", self._textcolor_edit)
+        )
         form.addRow("SetTextColor", tc_row)
 
-        bc_row, self._bordercolor_edit, self._bordercolor_swatch = self._make_color_row(
-            "RuleDetailBorderColor", "0 0 0 0"
-        )
-        self._bordercolor_swatch.setToolTip("點選邊框顏色")
+        bc_row, self._bordercolor_edit, self._bordercolor_swatch, self._bordercolor_btn = \
+            self._make_color_row("RuleDetailBorderColor", "0 0 0 0", "ColorPickBorderBtn")
+        self._bordercolor_swatch.setToolTip("點選邊框顏色預覽塊開啟選色器")
         self._bordercolor_swatch.installEventFilter(self)
+        self._bordercolor_btn.clicked.connect(
+            lambda: self._on_swatch_clicked("SetBorderColor", self._bordercolor_edit)
+        )
         form.addRow("SetBorderColor", bc_row)
 
-        bg_row, self._bgcolor_edit, self._bgcolor_swatch = self._make_color_row(
-            "RuleDetailBgColor", "0 0 0 180"
-        )
-        self._bgcolor_swatch.setToolTip("點選背景顏色")
+        bg_row, self._bgcolor_edit, self._bgcolor_swatch, self._bgcolor_btn = \
+            self._make_color_row("RuleDetailBgColor", "0 0 0 180", "ColorPickBgBtn")
+        self._bgcolor_swatch.setToolTip("點選背景顏色預覽塊開啟選色器")
         self._bgcolor_swatch.installEventFilter(self)
+        self._bgcolor_btn.clicked.connect(
+            lambda: self._on_swatch_clicked("SetBackgroundColor", self._bgcolor_edit)
+        )
         form.addRow("SetBackgroundColor", bg_row)
 
         vlayout.addWidget(box)
