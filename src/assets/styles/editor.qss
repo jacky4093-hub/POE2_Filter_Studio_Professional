@@ -331,3 +331,73 @@ QGroupBox#RuleEditorCard QSpinBox::down-button:hover {
     background: #1c2845;
     border-radius: 3px;
 }
+
+/* ── Validation Panel (P16.2) ── */
+
+#ValidationPanel {
+    background: #07090f;
+    border-top: 1px solid #1c2845;
+}
+
+#ValidationPanelHeader {
+    background: transparent;
+}
+
+#ValidationPanelTitle {
+    color: #4d6080;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+
+#ValidationChipError {
+    color: #ef4444;
+    background: #2a0a0a;
+    border: 1px solid #7f1d1d;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 0 5px;
+}
+
+#ValidationChipWarning {
+    color: #f59e0b;
+    background: #271900;
+    border: 1px solid #78350f;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 0 5px;
+}
+
+#ValidationChipInfo {
+    color: #60a5fa;
+    background: #06111f;
+    border: 1px solid #1e3a5f;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 0 5px;
+}
+
+#ValidationIssueList {
+    background: #050810;
+    color: #8a9bb8;
+    border: none;
+    border-top: 1px solid #111c30;
+    font-size: 11px;
+    font-family: Consolas, "Cascadia Code", "Courier New", monospace;
+}
+
+#ValidationIssueList::item {
+    padding: 2px 6px;
+}
+
+#ValidationIssueList::item:selected {
+    background: #111c30;
+}
+
+#ValidationIssueList::item:hover {
+    background: #0b1422;
+}

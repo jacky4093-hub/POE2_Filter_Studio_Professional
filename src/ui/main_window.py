@@ -31,6 +31,8 @@ from widgets.search_bar import SearchBar
 from ui.rule_detail_editor import RuleDetailEditor
 from ui.preview_panel import PreviewPanel
 from ui.category_sidebar import CategorySidebarWidget
+from ui.validation_panel import ValidationPanel
+from core.validator import validate_document
 from presenters.status_presenter import StatusPresenter
 from controllers.recent_files_controller import RecentFilesController
 from controllers.navigation_search_controller import NavigationSearchController
@@ -131,6 +133,8 @@ class MainWindow(QMainWindow):
         self.preview_panel.setMinimumWidth(180)
         self.preview_panel.setMaximumWidth(340)
 
+        self.validation_panel = ValidationPanel()
+
         # Left column: sidebar → toolbar → search bar → card browser
         left_col = QWidget()
         left_col.setObjectName("LeftColumn")
@@ -152,6 +156,7 @@ class MainWindow(QMainWindow):
         self._splitter.setStretchFactor(2, 1)
         self._splitter.setSizes([280, 660, 280])
         v.addWidget(self._splitter, stretch=1)
+        v.addWidget(self.validation_panel)
 
         # v2 shell — bottom status placeholder (replaces QStatusBar content area)
         status_shell = QWidget()
@@ -172,6 +177,7 @@ class MainWindow(QMainWindow):
         self.rule_card_browser.copy_rule_requested.connect(self._on_copy_rule)
         self.rule_card_browser.move_rule_requested.connect(self._on_move_rule)
         self.rule_detail_editor.rule_changed.connect(self._on_detail_rule_changed)
+        self.validation_panel.issue_clicked.connect(self._on_validation_issue_clicked)
 
         self.rule_actions_toolbar.new_requested.connect(self._on_add_rule)
         self.rule_actions_toolbar.delete_requested.connect(self._on_toolbar_delete)
@@ -828,6 +834,17 @@ class MainWindow(QMainWindow):
             )
         )
         self._update_title()
+        self._refresh_validation()
+
+    def _refresh_validation(self) -> None:
+        """Re-run validate_document and push results to the ValidationPanel."""
+        issues = validate_document(self._doc)
+        self.validation_panel.refresh(issues)
+
+    def _on_validation_issue_clicked(self, rule_index: int) -> None:
+        """Navigate to the rule associated with a clicked validation issue."""
+        if 0 <= rule_index < len(self._doc.rules):
+            self._navigate_to(rule_index)
 
     def _update_title(self) -> None:
         """Set window title — adds '* ' prefix when there are unsaved changes."""
