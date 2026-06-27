@@ -32,6 +32,7 @@ from ui.rule_detail_editor import RuleDetailEditor
 from ui.preview_panel import PreviewPanel
 from ui.category_sidebar import CategorySidebarWidget
 from presenters.status_presenter import StatusPresenter
+from controllers.recent_files_controller import RecentFilesController
 
 
 class MainWindow(QMainWindow):
@@ -49,6 +50,7 @@ class MainWindow(QMainWindow):
         self._settings_mgr = settings_mgr or SettingsManager()
         self._section_map: SectionMap | None = None
         self._status_presenter = StatusPresenter()
+        self._recent_files_controller = RecentFilesController(self, self._settings_mgr)
 
         # Search state
         self._search_results: list[int] = []
@@ -369,8 +371,7 @@ class MainWindow(QMainWindow):
         self._restore_action.setChecked(
             self._settings_mgr.get_restore_last_file_on_startup()
         )
-        self._rebuild_recent_menu()
-        self.welcome_screen.set_recent_files(self._settings_mgr.recent_files())
+        self._recent_files_controller.refresh_views()
 
     def _restore_workspace_state(self) -> None:
         """Restore window geometry and splitter sizes from JSON settings."""
@@ -403,39 +404,13 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _rebuild_recent_menu(self) -> None:
-        self._recent_menu.clear()
-        paths = self._settings_mgr.recent_files()
-        if not paths:
-            placeholder = QAction("（無最近開啟檔案）", self)
-            placeholder.setEnabled(False)
-            self._recent_menu.addAction(placeholder)
-        else:
-            for path in paths:
-                label = os.path.basename(path)
-                a = QAction(label, self)
-                a.setToolTip(path)
-                a.triggered.connect(lambda _=False, p=path: self._open_recent(p))
-                self._recent_menu.addAction(a)
-            self._recent_menu.addSeparator()
-            clear_action = QAction("清除清單", self)
-            clear_action.triggered.connect(self._clear_recent_files)
-            self._recent_menu.addAction(clear_action)
+        self._recent_files_controller.refresh_views()
 
     def _open_recent(self, path: str) -> None:
-        if not os.path.isfile(path):
-            QMessageBox.warning(
-                self, "找不到檔案",
-                f"檔案不存在或已被移動：\n{path}",
-            )
-            return
-        if not self._confirm_discard():
-            return
-        self.load_file(path)
+        self._recent_files_controller.open_recent(path)
 
     def _clear_recent_files(self) -> None:
-        self._settings_mgr.clear_recent_files()
-        self._settings_mgr.save()
-        self._rebuild_recent_menu()
+        self._recent_files_controller.clear_recent()
 
     # ------------------------------------------------------------------
     # UI synchronization helpers
@@ -557,11 +532,10 @@ class MainWindow(QMainWindow):
         self._refresh_status()      # includes _update_title()
         self._refresh_undo_actions()
 
-        self._settings_mgr.add_recent_file(path)
         self._settings_mgr.last_open_dir = os.path.dirname(os.path.abspath(path))
         self._settings_mgr.set_last_open_file(path)
         self._settings_mgr.save()
-        self._rebuild_recent_menu()
+        self._recent_files_controller.record_opened(path)
         self._show_editor()
         return True
 
@@ -590,11 +564,10 @@ class MainWindow(QMainWindow):
         self._doc.set_file_path(path)
         self._doc.clear_dirty()
         self._refresh_status()      # includes _update_title()
-        self._settings_mgr.add_recent_file(path)
         self._settings_mgr.last_open_dir = os.path.dirname(os.path.abspath(path))
         self._settings_mgr.set_last_open_file(path)
         self._settings_mgr.save()
-        self._rebuild_recent_menu()
+        self._recent_files_controller.record_saved(path)
 
     # ------------------------------------------------------------------
     # Undo / Redo
