@@ -1,4 +1,4 @@
-"""RuleDetailEditor — v5.0.0  (P13.6 Color Picker Dialog)
+"""RuleDetailEditor — v6.0.0  (P13.7 Minimap Icon Picker)
 
 Design contract (unchanged from v2.3.0):
   - set_rule(rule, index) populates all fields WITHOUT emitting rule_changed.
@@ -25,6 +25,13 @@ P13.6 colour picker:
   - On cancel: field and emit are both unchanged.
   - _choose_color() is the testable hook for monkeypatching in tests.
   - Manual text entry still works; invalid values show dashed-red swatch.
+
+P13.7 minimap icon picker:
+  - Three QComboBox dropdowns (size / color / shape) beside the text field.
+  - Changing a dropdown writes "{size} {color} {shape}" back to the text field
+    and triggers rule_changed.
+  - Typing valid text syncs the dropdowns; invalid text leaves them unchanged.
+  - _mm_parse() is the module-level pure validator (testable without GUI).
 """
 
 from __future__ import annotations
@@ -51,6 +58,29 @@ _COLOR_DEFAULTS: dict[str, tuple[int, int, int, int]] = {
     "SetBackgroundColor": (0,   0,   0,   180),
 }
 
+# MinimapIcon picker options
+_MM_SIZES  = ["0", "1", "2"]
+_MM_COLORS = [
+    "Red", "Green", "Blue", "Brown", "White", "Yellow",
+    "Cyan", "Grey", "Orange", "Pink", "Purple",
+]
+_MM_SHAPES = [
+    "Circle", "Diamond", "Hexagon", "Square", "Star",
+    "Triangle", "Cross", "Moon", "Raindrop", "Kite",
+    "Pentagon", "UpsideDownHouse",
+]
+
+
+def _mm_parse(text: str) -> tuple[str, str, str] | None:
+    """Parse MinimapIcon text into (size, color, shape), or None if invalid."""
+    parts = text.strip().split()
+    if len(parts) < 3:
+        return None
+    size, color, shape = parts[0], parts[1], parts[2]
+    if size not in _MM_SIZES or color not in _MM_COLORS or shape not in _MM_SHAPES:
+        return None
+    return size, color, shape
+
 
 class RuleDetailEditor(QWidget):
     """Form editor for one FilterRule.  Emits rule_changed(index, updated_rule)."""
@@ -64,6 +94,7 @@ class RuleDetailEditor(QWidget):
         self._rule: FilterRule | None = None
         self._index: int = -1
         self._loading: bool = False   # guards spurious rule_changed during set_rule
+        self._mm_syncing: bool = False  # re-entrance guard for minimap sync
 
         self._build_ui()
 
@@ -292,6 +323,41 @@ class RuleDetailEditor(QWidget):
             edit.textChanged.connect(self._update_color_swatches)
             edit.editingFinished.connect(self._on_any_field_changed)
 
+    # ------------------------------------------------------------------
+    # Minimap picker sync
+    # ------------------------------------------------------------------
+
+    def _mm_sync_to_dropdowns(self) -> None:
+        """Parse minimap text and update dropdowns; no-op if invalid."""
+        if self._mm_syncing:
+            return
+        parsed = _mm_parse(self._minimap_edit.text())
+        if parsed is None:
+            return
+        self._mm_syncing = True
+        try:
+            size, color, shape = parsed
+            self._mm_size.setCurrentText(size)
+            self._mm_color.setCurrentText(color)
+            self._mm_shape.setCurrentText(shape)
+        finally:
+            self._mm_syncing = False
+
+    def _mm_sync_from_dropdowns(self) -> None:
+        """Write dropdown values back to minimap text and emit rule_changed."""
+        if self._mm_syncing or self._rule is None:
+            return
+        self._mm_syncing = True
+        try:
+            size  = self._mm_size.currentText()
+            color = self._mm_color.currentText()
+            shape = self._mm_shape.currentText()
+            self._minimap_edit.setText(f"{size} {color} {shape}")
+        finally:
+            self._mm_syncing = False
+        # setText does not trigger editingFinished, so call the slot manually
+        self._on_any_field_changed()
+
     def _build_audio_card(self, vlayout: QVBoxLayout) -> None:
         box, form = self._make_card("音效")
 
@@ -311,18 +377,50 @@ class RuleDetailEditor(QWidget):
     def _build_minimap_card(self, vlayout: QVBoxLayout) -> None:
         box, form = self._make_card("小地圖")
 
+        # Text input (manual entry preserved)
         self._minimap_edit = QLineEdit()
         self._minimap_edit.setObjectName("RuleDetailMinimapIcon")
         self._minimap_edit.setPlaceholderText("1 Red Circle")
         form.addRow("MinimapIcon", self._minimap_edit)
 
+        # Quick-pick dropdowns: Size / Color / Shape
+        picker = QWidget()
+        picker_layout = QHBoxLayout(picker)
+        picker_layout.setContentsMargins(0, 0, 0, 0)
+        picker_layout.setSpacing(4)
+
+        self._mm_size = QComboBox()
+        self._mm_size.setObjectName("MinimapSizeCombo")
+        self._mm_size.addItems(_MM_SIZES)
+        self._mm_size.setToolTip("大小")
+
+        self._mm_color = QComboBox()
+        self._mm_color.setObjectName("MinimapColorCombo")
+        self._mm_color.addItems(_MM_COLORS)
+        self._mm_color.setToolTip("顏色")
+
+        self._mm_shape = QComboBox()
+        self._mm_shape.setObjectName("MinimapShapeCombo")
+        self._mm_shape.addItems(_MM_SHAPES)
+        self._mm_shape.setToolTip("形狀")
+
+        picker_layout.addWidget(self._mm_size)
+        picker_layout.addWidget(self._mm_color, stretch=1)
+        picker_layout.addWidget(self._mm_shape, stretch=1)
+        form.addRow("快速選擇", picker)
+
+        # Format hint
         self._minimap_hint = QLabel("格式：大小 顏色 形狀（例：1 Red Circle）")
         self._minimap_hint.setObjectName("RuleDetailHintLabel")
         form.addRow("", self._minimap_hint)
 
         vlayout.addWidget(box)
 
+        # Connections
+        self._minimap_edit.textChanged.connect(self._mm_sync_to_dropdowns)
         self._minimap_edit.editingFinished.connect(self._on_any_field_changed)
+        for combo in (self._mm_size, self._mm_color, self._mm_shape):
+            combo.currentTextChanged.connect(self._mm_sync_from_dropdowns)
 
     def _build_preview_card(self, vlayout: QVBoxLayout) -> None:
         box = QGroupBox("規則預覽（唯讀）")

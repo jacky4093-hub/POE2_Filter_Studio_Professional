@@ -1007,3 +1007,233 @@ class TestP136ColorPickerDialog:
 
         ed._on_swatch_clicked("SetBorderColor", ed._bordercolor_edit)
         assert received_keys == ["SetBorderColor"]
+
+
+# ---------------------------------------------------------------------------
+# TestP137MinimapPicker  (P13.7 — Minimap Icon Picker dropdowns)
+# ---------------------------------------------------------------------------
+
+class TestP137MinimapPicker:
+    """Minimap icon picker: 3 QComboBox dropdowns that sync bidirectionally
+    with the MinimapIcon text field."""
+
+    # ── widgets exist ─────────────────────────────────────────────
+
+    def test_mm_size_combo_exists(self, qapp):
+        from PySide6.QtWidgets import QComboBox
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_mm_size")
+        assert isinstance(ed._mm_size, QComboBox)
+
+    def test_mm_color_combo_exists(self, qapp):
+        from PySide6.QtWidgets import QComboBox
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_mm_color")
+        assert isinstance(ed._mm_color, QComboBox)
+
+    def test_mm_shape_combo_exists(self, qapp):
+        from PySide6.QtWidgets import QComboBox
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_mm_shape")
+        assert isinstance(ed._mm_shape, QComboBox)
+
+    def test_minimap_edit_still_exists(self, qapp):
+        from PySide6.QtWidgets import QLineEdit
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_minimap_edit")
+        assert isinstance(ed._minimap_edit, QLineEdit)
+
+    # ── combo items ───────────────────────────────────────────────
+
+    def test_size_items_are_0_1_2(self, qapp):
+        ed = _make_editor(qapp)
+        sizes = [ed._mm_size.itemText(i) for i in range(ed._mm_size.count())]
+        assert sizes == ["0", "1", "2"]
+
+    def test_color_items_include_expected(self, qapp):
+        ed = _make_editor(qapp)
+        colors = [ed._mm_color.itemText(i) for i in range(ed._mm_color.count())]
+        for c in ("Red", "Green", "Blue", "White", "Yellow", "Cyan",
+                  "Grey", "Orange", "Pink", "Purple", "Brown"):
+            assert c in colors, f"missing color: {c}"
+
+    def test_shape_items_include_expected(self, qapp):
+        ed = _make_editor(qapp)
+        shapes = [ed._mm_shape.itemText(i) for i in range(ed._mm_shape.count())]
+        for s in ("Circle", "Diamond", "Hexagon", "Square", "Star",
+                  "Triangle", "Cross", "Moon", "Raindrop", "Kite",
+                  "Pentagon", "UpsideDownHouse"):
+            assert s in shapes, f"missing shape: {s}"
+
+    # ── set_rule syncs dropdowns ──────────────────────────────────
+
+    def test_set_rule_syncs_size(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "2 Blue Star"]]), index=0)
+        assert ed._mm_size.currentText() == "2"
+
+    def test_set_rule_syncs_color(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        assert ed._mm_color.currentText() == "Red"
+
+    def test_set_rule_syncs_shape(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "0 Green Diamond"]]), index=0)
+        assert ed._mm_shape.currentText() == "Diamond"
+
+    def test_set_rule_does_not_emit(self, qapp):
+        ed = _make_editor(qapp)
+        received = _collect_signals(ed)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        assert received == []
+
+    def test_set_rule_invalid_minimap_does_not_crash(self, qapp):
+        ed = _make_editor(qapp)
+        # invalid text — dropdowns stay at defaults, no exception
+        ed.set_rule(_rule(actions=[["MinimapIcon", "not valid"]]), index=0)
+        assert ed._minimap_edit.text() == "not valid"
+
+    def test_set_rule_invalid_does_not_change_dropdowns(self, qapp):
+        ed = _make_editor(qapp)
+        default_size = ed._mm_size.currentText()
+        ed.set_rule(_rule(actions=[["MinimapIcon", "bad"]]), index=0)
+        assert ed._mm_size.currentText() == default_size
+
+    def test_set_rule_empty_minimap_does_not_crash(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        assert ed._minimap_edit.text() == ""
+
+    # ── dropdown → text (selector changes write text) ─────────────
+
+    def test_size_change_writes_text(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        ed._mm_size.setCurrentText("2")
+        assert ed._minimap_edit.text() == "2 Red Circle"
+
+    def test_color_change_writes_text(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        ed._mm_color.setCurrentText("Blue")
+        assert ed._minimap_edit.text() == "1 Blue Circle"
+
+    def test_shape_change_writes_text(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        ed._mm_shape.setCurrentText("Star")
+        assert ed._minimap_edit.text() == "1 Red Star"
+
+    # ── dropdown → emit ───────────────────────────────────────────
+
+    def test_size_change_emits_rule_changed(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        received = _collect_signals(ed)
+        ed._mm_size.setCurrentText("0")
+        assert len(received) == 1
+        _idx, updated = received[0]
+        mm_vals = [v for k, v in updated.actions if k == "MinimapIcon"]
+        assert mm_vals == ["0 Red Circle"]
+
+    def test_color_change_emits_rule_changed(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        received = _collect_signals(ed)
+        ed._mm_color.setCurrentText("Green")
+        assert len(received) == 1
+
+    def test_shape_change_emits_rule_changed(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        received = _collect_signals(ed)
+        ed._mm_shape.setCurrentText("Triangle")
+        assert len(received) == 1
+
+    # ── text → dropdowns (manual input syncs selectors) ──────────
+
+    def test_manual_valid_text_syncs_size(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._minimap_edit.setText("2 Blue Star")
+        assert ed._mm_size.currentText() == "2"
+
+    def test_manual_valid_text_syncs_color(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._minimap_edit.setText("2 Blue Star")
+        assert ed._mm_color.currentText() == "Blue"
+
+    def test_manual_valid_text_syncs_shape(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._minimap_edit.setText("2 Blue Star")
+        assert ed._mm_shape.currentText() == "Star"
+
+    def test_manual_invalid_text_does_not_crash(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._minimap_edit.setText("not valid at all")
+        # no crash, dropdowns unchanged
+
+    def test_manual_partial_text_does_not_crash(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._minimap_edit.setText("1")
+        # no crash, dropdowns unchanged
+
+    def test_manual_text_does_not_emit_until_editing_finished(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        received = _collect_signals(ed)
+        # setText triggers textChanged but NOT editingFinished
+        ed._minimap_edit.setText("2 Blue Star")
+        assert received == []
+
+    # ── no circular loop ─────────────────────────────────────────
+
+    def test_no_loop_on_dropdown_change(self, qapp):
+        """Changing a dropdown must not trigger infinite signal recursion."""
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        received = _collect_signals(ed)
+        ed._mm_shape.setCurrentText("Moon")
+        # exactly one emit, not many
+        assert len(received) == 1
+
+    def test_mm_syncing_flag_resets_after_change(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        ed._mm_size.setCurrentText("0")
+        assert ed._mm_syncing is False
+
+    # ── _mm_parse module-level helper ────────────────────────────
+
+    def test_parse_valid(self, qapp):
+        from ui.rule_detail_editor import _mm_parse
+        assert _mm_parse("1 Red Circle") == ("1", "Red", "Circle")
+
+    def test_parse_all_zeros(self, qapp):
+        from ui.rule_detail_editor import _mm_parse
+        assert _mm_parse("0 Green Diamond") == ("0", "Green", "Diamond")
+
+    def test_parse_invalid_size(self, qapp):
+        from ui.rule_detail_editor import _mm_parse
+        assert _mm_parse("5 Red Circle") is None
+
+    def test_parse_invalid_color(self, qapp):
+        from ui.rule_detail_editor import _mm_parse
+        assert _mm_parse("1 Magenta Circle") is None
+
+    def test_parse_invalid_shape(self, qapp):
+        from ui.rule_detail_editor import _mm_parse
+        assert _mm_parse("1 Red Pentagon9") is None
+
+    def test_parse_too_few_parts(self, qapp):
+        from ui.rule_detail_editor import _mm_parse
+        assert _mm_parse("1 Red") is None
+
+    def test_parse_empty_string(self, qapp):
+        from ui.rule_detail_editor import _mm_parse
+        assert _mm_parse("") is None

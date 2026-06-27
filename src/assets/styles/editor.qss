@@ -1,5 +1,5 @@
 /* ============================================================
-   Rule Detail Editor — v5.0.0  (P13.6 Color Picker Dialog)
+   Rule Detail Editor — v6.0.0  (P13.7 Minimap Icon Picker)
    Loaded automatically by bootstrap.apply_theme() (sorted glob).
    ============================================================ */
 
@@ -205,6 +205,21 @@ QGroupBox#RuleEditorCard QSpinBox::down-button:hover {
 
 #ColorSwatch {
     border-radius: 2px;
+}
+
+/* ── Minimap picker dropdowns (compact) ── */
+
+#MinimapSizeCombo {
+    min-width: 42px;
+    max-width: 42px;
+}
+
+#MinimapColorCombo {
+    min-width: 70px;
+}
+
+#MinimapShapeCombo {
+    min-width: 100px;
 }
 
 /* ── Format hint labels ── */
