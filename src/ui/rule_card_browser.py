@@ -233,6 +233,10 @@ class RuleCardBrowser(QWidget):
         self._search_options = {}
         self.refresh()
 
+    def is_rule_visible(self, real_index: int) -> bool:
+        """Return whether the given real_index currently has a visible card."""
+        return real_index in self._cards
+
     def get_visible_count(self) -> int:
         """Number of cards currently shown (after both filters)."""
         return len(self._cards)

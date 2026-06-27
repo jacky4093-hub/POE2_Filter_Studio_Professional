@@ -98,6 +98,35 @@ class TestLoadRules:
 # TestCategoryFilter
 # ---------------------------------------------------------------------------
 
+class TestRuleVisibility:
+    def test_is_rule_visible_true_for_loaded_rule_and_false_for_missing(self, qapp):
+        b = RuleCardBrowser()
+        rules = [_currency(), _map_rule(), _tail()]
+        b.load_rules(rules)
+
+        assert b.is_rule_visible(0) is True
+        assert b.is_rule_visible(1) is True
+        assert b.is_rule_visible(99) is False
+
+    def test_is_rule_visible_false_after_category_filter(self, qapp):
+        b = RuleCardBrowser()
+        rules = [_currency(), _map_rule(), _tail()]
+        b.load_rules(rules)
+        b.set_category_filter(Category.CURRENCY)
+
+        assert b.is_rule_visible(0) is True
+        assert b.is_rule_visible(1) is False
+
+    def test_is_rule_visible_false_after_search_filter(self, qapp):
+        b = RuleCardBrowser()
+        rules = [_currency(), _map_rule(), _tail()]
+        b.load_rules(rules)
+        b.set_search_filter("Waystones")
+
+        assert b.is_rule_visible(0) is False
+        assert b.is_rule_visible(1) is True
+
+
 class TestCategoryFilter:
     def test_all_shows_everything(self, qapp):
         b = RuleCardBrowser()

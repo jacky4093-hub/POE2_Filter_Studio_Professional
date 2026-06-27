@@ -490,7 +490,10 @@ class MainWindow(QMainWindow):
         self.rule_card_browser.set_search_filter(query, options)
         self._update_filter_search_count()
         # If the previously selected card was filtered out, clear the editor.
-        if self._selected_index >= 0 and self._selected_index not in self.rule_card_browser._cards:
+        if (
+            self._selected_index >= 0
+            and not self.rule_card_browser.is_rule_visible(self._selected_index)
+        ):
             self._clear_rule_ui()
 
     def _on_filter_search_clear(self) -> None:
