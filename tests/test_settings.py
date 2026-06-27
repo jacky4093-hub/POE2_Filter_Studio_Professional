@@ -265,9 +265,11 @@ class TestSearchBarEscape:
 
 class TestMainWindowRecentMenu:
     @pytest.fixture()
-    def window(self, qapp, settings):
+    def window(self, qapp, settings, tmp_path):
         from ui.main_window import MainWindow
-        w = MainWindow(settings)
+        from core.settings_manager import SettingsManager
+        mgr = SettingsManager(settings_path=str(tmp_path / "sm.json"))
+        w = MainWindow(settings, settings_mgr=mgr)
         yield w
         w.close()
 
@@ -282,7 +284,8 @@ class TestMainWindowRecentMenu:
         f.write_text("Show\n", encoding="utf-8")
         path = str(f)
 
-        settings.add_recent_file(path)
+        # Recent files now managed by SettingsManager, not WorkspaceSettings
+        window._settings_mgr.add_recent_file(path)
         window._rebuild_recent_menu()
 
         texts = [a.text() for a in window._recent_menu.actions() if not a.isSeparator()]

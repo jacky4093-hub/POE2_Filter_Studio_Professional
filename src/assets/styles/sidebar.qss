@@ -1,0 +1,42 @@
+/* POE2 Filter Studio — v2.1.0 category sidebar */
+
+#CategorySidebar {
+    background-color: #0B0F17;
+    border: 1px solid #263244;
+    border-radius: 4px;
+    min-width: 140px;
+    max-width: 200px;
+}
+
+#CategorySidebarTitle {
+    color: #e2e8f0;
+    font-weight: bold;
+    font-size: 13px;
+    padding: 12px 8px 4px 8px;
+    background: transparent;
+}
+
+#CategorySidebarList {
+    background-color: transparent;
+    border: none;
+    outline: none;
+    padding: 4px 0;
+}
+
+#CategorySidebarList::item {
+    color: #94a3b8;
+    padding: 8px 10px;
+    border-left: 3px solid transparent;
+    border-radius: 0;
+}
+
+#CategorySidebarList::item:hover {
+    background-color: #1e2a45;
+    color: #e2e8f0;
+}
+
+#CategorySidebarList::item:selected {
+    background-color: #253350;
+    color: #e2e8f0;
+    border-left: 3px solid #7C3AED;
+}

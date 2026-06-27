@@ -1,0 +1,107 @@
+/* ============================================================
+   PreferencesDialog — POE2 Filter Studio dark theme
+   ============================================================ */
+
+PreferencesDialog {
+    background-color: #1e1e2e;
+    color: #cdd6f4;
+}
+
+#PrefSectionTitle {
+    font-size: 13px;
+    font-weight: bold;
+    color: #89b4fa;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #313244;
+}
+
+#PrefCheckBox {
+    color: #cdd6f4;
+    font-size: 13px;
+    spacing: 8px;
+    padding: 2px 0;
+}
+
+#PrefCheckBox::indicator {
+    width: 15px;
+    height: 15px;
+    border: 1px solid #45475a;
+    border-radius: 3px;
+    background-color: #181825;
+}
+
+#PrefCheckBox::indicator:checked {
+    background-color: #89b4fa;
+    border-color: #89b4fa;
+}
+
+#PrefCheckBox::indicator:hover {
+    border-color: #89b4fa;
+}
+
+#PrefLabel {
+    color: #a6adc8;
+    font-size: 12px;
+    min-width: 72px;
+}
+
+#PrefPathLabel {
+    color: #6c7086;
+    font-size: 11px;
+    font-style: italic;
+}
+
+#PrefRecentList {
+    background-color: #181825;
+    border: 1px solid #313244;
+    border-radius: 4px;
+    color: #cdd6f4;
+    font-size: 12px;
+    selection-background-color: #313244;
+    selection-color: #cdd6f4;
+    outline: none;
+}
+
+#PrefRecentList::item {
+    padding: 3px 6px;
+    border-radius: 2px;
+}
+
+#PrefRecentList::item:selected {
+    background-color: #313244;
+}
+
+#PrefRecentList::item:hover {
+    background-color: #24273a;
+}
+
+#PrefClearButton {
+    background-color: #313244;
+    color: #f38ba8;
+    border: 1px solid #45475a;
+    border-radius: 4px;
+    padding: 5px 14px;
+    font-size: 12px;
+}
+
+#PrefClearButton:hover {
+    background-color: #45475a;
+    border-color: #f38ba8;
+}
+
+#PrefClearButton:pressed {
+    background-color: #181825;
+}
+
+#PrefClearButton:disabled {
+    color: #45475a;
+    border-color: #313244;
+    background-color: #1e1e2e;
+}
+
+#PrefSeparator {
+    color: #313244;
+    max-height: 1px;
+    background-color: #313244;
+}

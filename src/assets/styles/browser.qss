@@ -1,0 +1,108 @@
+/* ============================================================
+   Rule Card Browser — v2.2.0
+   Loaded automatically by bootstrap.apply_theme() alongside
+   base.qss / shell.qss / sidebar.qss (alphabetical order).
+   ============================================================ */
+
+/* ── Scroll area & content background ── */
+
+#RuleCardScrollArea {
+    background: #0f1117;
+    border: 1px solid #1e2435;
+    border-radius: 2px;
+}
+
+#RuleCardContent {
+    background: #0f1117;
+}
+
+/* ── Individual card ── */
+
+#RuleCard {
+    background: #161b27;
+    border: 1px solid #1e2435;
+    border-radius: 4px;
+    margin: 0px 2px;
+}
+
+#RuleCard:hover {
+    background: #1e2538;
+    border-color: #334155;
+}
+
+/* Selected state (cardSelected dynamic property) */
+#RuleCard[cardSelected="true"] {
+    background: #1a3558;
+    border-color: #3b82f6;
+}
+
+/* Highlight: cursor match */
+#RuleCard[cardHighlight="current"] {
+    background: #4a3200;
+    border-color: #f59e0b;
+}
+
+/* Highlight: other search match */
+#RuleCard[cardHighlight="match"] {
+    background: #271b00;
+    border-color: #78350f;
+}
+
+/* Disabled rule — lower contrast */
+#RuleCard[cardDisabled="true"] {
+    background: #111520;
+    border-color: #1a1f2e;
+}
+
+/* ── Text elements inside each card ── */
+
+#RuleCardNum {
+    color: #475569;
+    font-size: 11px;
+    min-width: 30px;
+}
+
+#RuleCardAction {
+    font-size: 11px;
+    min-width: 48px;
+}
+
+#RuleCardLabel {
+    color: #cbd5e1;
+    font-size: 12px;
+}
+
+#RuleCard[cardDisabled="true"] #RuleCardLabel {
+    color: #475569;
+}
+
+#RuleCardCategory {
+    font-size: 10px;
+}
+
+#RuleCardDisabledTag {
+    color: #ef4444;
+    font-size: 10px;
+    font-style: italic;
+}
+
+/* ── Section header (non-selectable divider row) ── */
+
+#RuleCardSectionHeader {
+    color: #ccaa55;
+    background: transparent;
+    font-weight: bold;
+    font-size: 11px;
+    padding: 6px 8px 2px 8px;
+    border-bottom: 1px solid #2a2f3c;
+    margin-top: 6px;
+    margin-bottom: 2px;
+}
+
+/* ── Empty state label ── */
+
+#RuleCardEmptyLabel {
+    color: #3b4558;
+    font-size: 13px;
+    padding: 40px;
+}

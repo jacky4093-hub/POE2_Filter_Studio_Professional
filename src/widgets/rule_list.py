@@ -22,6 +22,7 @@ from PySide6.QtCore import Signal, Qt
 from PySide6.QtGui import QColor, QFont, QBrush
 
 from core.models import FilterRule
+from core.categorizer import Category, classify_rule
 
 
 # ---------------------------------------------------------------------------
@@ -160,6 +161,9 @@ class RuleListWidget(QWidget):
         # Keyed by first_rule_index (not name) to avoid duplicate-name collisions.
         self._section_header_items: dict[int, QTreeWidgetItem] = {}
 
+        # v2.1.0 — optional category filter (None = show all)
+        self._category_filter: Category | None = None
+
         self._setup_ui()
 
     def _setup_ui(self):
@@ -202,6 +206,18 @@ class RuleListWidget(QWidget):
         self._rules = rules
         self._section_map = section_map
         self.refresh()
+
+    def set_category_filter(self, category: Category | None) -> None:
+        """Filter visible rules by category. None or Category.ALL shows all."""
+        if category == Category.ALL:
+            category = None
+        if self._category_filter == category:
+            return
+        self._category_filter = category
+        self.refresh()
+
+    def category_filter(self) -> Category | None:
+        return self._category_filter
 
     def refresh(self):
         current_real = self._get_current_real_index()
@@ -330,7 +346,7 @@ class RuleListWidget(QWidget):
         display_num = 1
 
         for real_idx, rule in enumerate(self._rules):
-            if rule.action == "__TAIL__":
+            if not self._passes_category_filter(rule):
                 continue
             item = self._make_rule_item(None, real_idx, rule, display_num)
             if real_idx == current_real:
@@ -345,11 +361,18 @@ class RuleListWidget(QWidget):
         item_to_select: QTreeWidgetItem | None = None
         section_items: dict[int, QTreeWidgetItem] = {}   # sec_idx → item
 
-        # ── Phase 1: section header containers ────────────────────────
+        # Precompute which rules pass the category filter
+        visible: set[int] = {
+            i for i, r in enumerate(self._rules)
+            if self._passes_category_filter(r)
+        }
+
+        # ── Phase 1: section header containers (only if they have visible rules)
         unsec_item: QTreeWidgetItem | None = None
-        if smap.unsectioned_indices:
+        unsec_visible = [i for i in smap.unsectioned_indices if i in visible]
+        if unsec_visible:
             expanded = self._section_expanded.get("(未分類)", True)
-            unsec_item = QTreeWidgetItem(["(未分類)"])
+            unsec_item = QTreeWidgetItem([f"(未分類)  ({len(unsec_visible)})"])
             unsec_item.setData(0, Qt.ItemDataRole.UserRole, -1)
             unsec_item.setFlags(
                 unsec_item.flags()
@@ -362,9 +385,16 @@ class RuleListWidget(QWidget):
 
         font = self._section_font()
         for sec_idx, section in enumerate(smap.sections):
+            sec_visible = [
+                i for i in visible
+                if smap.rule_to_section.get(i, -1) == sec_idx
+            ]
+            if not sec_visible:
+                continue
+
             expanded = self._section_expanded.get(section.name, True)
             arrow = "▼" if expanded else "▶"
-            label = f"{arrow}  {section.name}  ({section.rule_count})"
+            label = f"{arrow}  {section.name}  ({len(sec_visible)})"
             sec_item = QTreeWidgetItem([label])
             sec_item.setData(0, Qt.ItemDataRole.UserRole, -1)
             sec_item.setData(0, SECTION_ROLE, section.first_rule_index)
@@ -378,13 +408,12 @@ class RuleListWidget(QWidget):
             self.list_widget.addTopLevelItem(sec_item)
             sec_item.setExpanded(expanded)
             section_items[sec_idx] = sec_item
-            # Register for partial-expand without rebuild (keyed by first_rule_index)
             self._section_header_items[section.first_rule_index] = sec_item
 
         # ── Phase 2: rule children (document order) ───────────────────
         display_num = 1
         for real_idx, rule in enumerate(self._rules):
-            if rule.action == "__TAIL__":
+            if real_idx not in visible:
                 continue
 
             sec_idx = smap.rule_to_section.get(real_idx, -1)
@@ -404,6 +433,13 @@ class RuleListWidget(QWidget):
         if item_to_select:
             self.list_widget.setCurrentItem(item_to_select)
             self.list_widget.scrollToItem(item_to_select)
+
+    def _passes_category_filter(self, rule: FilterRule) -> bool:
+        if rule.action == "__TAIL__":
+            return False
+        if self._category_filter is None:
+            return True
+        return classify_rule(rule) == self._category_filter
 
     def _make_rule_item(
         self,

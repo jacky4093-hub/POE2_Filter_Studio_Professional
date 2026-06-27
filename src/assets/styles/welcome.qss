@@ -1,0 +1,97 @@
+/* ======================================================
+   Welcome Screen — v2.7.0
+   ====================================================== */
+
+WelcomeScreen {
+    background-color: #1e1e2e;
+}
+
+#WelcomeCard {
+    background-color: #24273a;
+    border-radius: 12px;
+}
+
+#WelcomeTitle {
+    font-size: 26px;
+    font-weight: bold;
+    color: #cdd6f4;
+    letter-spacing: 1px;
+}
+
+#WelcomeSubtitle {
+    font-size: 13px;
+    color: #6c7086;
+}
+
+#WelcomePrimaryButton {
+    background-color: #89b4fa;
+    color: #1e1e2e;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 0;
+    font-size: 14px;
+    font-weight: bold;
+    min-width: 200px;
+}
+
+#WelcomePrimaryButton:hover {
+    background-color: #b4d0ff;
+}
+
+#WelcomePrimaryButton:pressed {
+    background-color: #74a8f8;
+}
+
+#WelcomeSecondaryButton {
+    background-color: #313244;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    border-radius: 6px;
+    padding: 10px 0;
+    font-size: 14px;
+    min-width: 200px;
+}
+
+#WelcomeSecondaryButton:hover {
+    background-color: #45475a;
+}
+
+#WelcomeSecondaryButton:pressed {
+    background-color: #585b70;
+}
+
+#WelcomeRecentHeader {
+    font-size: 12px;
+    font-weight: bold;
+    color: #6c7086;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+#WelcomeRecentItem {
+    background-color: transparent;
+    color: #89b4fa;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 8px;
+    text-align: left;
+    font-size: 13px;
+    qproperty-alignment: AlignLeft;
+}
+
+#WelcomeRecentItem:hover:enabled {
+    background-color: #313244;
+    color: #cdd6f4;
+}
+
+#WelcomeRecentItem:disabled {
+    color: #45475a;
+    text-decoration: line-through;
+}
+
+#WelcomeEmptyState {
+    color: #45475a;
+    font-style: italic;
+    font-size: 13px;
+    padding: 4px 0;
+}
