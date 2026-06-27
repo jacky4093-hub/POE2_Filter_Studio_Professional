@@ -811,3 +811,199 @@ class TestP134Hints:
     def test_minimap_hint_object_name(self, qapp):
         ed = _make_editor(qapp)
         assert ed._minimap_hint.objectName() == "RuleDetailHintLabel"
+
+
+# ---------------------------------------------------------------------------
+# TestP136ColorPickerDialog  (P13.6 新增)
+# ---------------------------------------------------------------------------
+
+class TestP136ColorPickerDialog:
+    """Colour picker dialog — cursor, tooltip, parse helper, and dialog flow."""
+
+    # ── Swatch cursor & tooltip ───────────────────────────────────
+
+    def test_textcolor_swatch_pointing_hand_cursor(self, qapp):
+        from PySide6.QtCore import Qt
+        ed = _make_editor(qapp)
+        assert ed._textcolor_swatch.cursor().shape() == Qt.CursorShape.PointingHandCursor
+
+    def test_bordercolor_swatch_pointing_hand_cursor(self, qapp):
+        from PySide6.QtCore import Qt
+        ed = _make_editor(qapp)
+        assert ed._bordercolor_swatch.cursor().shape() == Qt.CursorShape.PointingHandCursor
+
+    def test_bgcolor_swatch_pointing_hand_cursor(self, qapp):
+        from PySide6.QtCore import Qt
+        ed = _make_editor(qapp)
+        assert ed._bgcolor_swatch.cursor().shape() == Qt.CursorShape.PointingHandCursor
+
+    def test_textcolor_swatch_tooltip_not_empty(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._textcolor_swatch.toolTip() != ""
+
+    def test_bordercolor_swatch_tooltip_not_empty(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._bordercolor_swatch.toolTip() != ""
+
+    def test_bgcolor_swatch_tooltip_not_empty(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._bgcolor_swatch.toolTip() != ""
+
+    def test_textcolor_swatch_tooltip_mentions_text(self, qapp):
+        ed = _make_editor(qapp)
+        assert "文字" in ed._textcolor_swatch.toolTip()
+
+    def test_bordercolor_swatch_tooltip_mentions_border(self, qapp):
+        ed = _make_editor(qapp)
+        assert "邊框" in ed._bordercolor_swatch.toolTip()
+
+    def test_bgcolor_swatch_tooltip_mentions_background(self, qapp):
+        ed = _make_editor(qapp)
+        assert "背景" in ed._bgcolor_swatch.toolTip()
+
+    # ── _parse_rgba_to_qcolor ─────────────────────────────────────
+
+    def test_parse_valid_rgb_adds_alpha_255(self, qapp):
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        c = ed._parse_rgba_to_qcolor("255 0 0", "SetTextColor")
+        assert c.red() == 255 and c.green() == 0 and c.blue() == 0
+        assert c.alpha() == 255
+
+    def test_parse_valid_rgba(self, qapp):
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        c = ed._parse_rgba_to_qcolor("10 20 30 128", "SetTextColor")
+        assert c.red() == 10 and c.green() == 20
+        assert c.blue() == 30 and c.alpha() == 128
+
+    def test_parse_out_of_range_clamped(self, qapp):
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        c = ed._parse_rgba_to_qcolor("999 -5 300 0", "SetTextColor")
+        assert c.red() == 255 and c.green() == 0 and c.blue() == 255 and c.alpha() == 0
+
+    def test_parse_invalid_text_returns_textcolor_default(self, qapp):
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        c = ed._parse_rgba_to_qcolor("not_a_color", "SetTextColor")
+        assert c == QColor(255, 255, 255, 255)
+
+    def test_parse_empty_returns_bgcolor_default(self, qapp):
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        c = ed._parse_rgba_to_qcolor("", "SetBackgroundColor")
+        assert c == QColor(0, 0, 0, 180)
+
+    def test_parse_invalid_returns_bordercolor_default(self, qapp):
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        c = ed._parse_rgba_to_qcolor("xyz abc", "SetBorderColor")
+        assert c == QColor(0, 0, 0, 255)
+
+    # ── _on_swatch_clicked: accept ────────────────────────────────
+
+    def test_accept_writes_rgba_to_textcolor_edit(self, qapp, monkeypatch):
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetTextColor", "0 0 0 255"]]), index=0)
+
+        chosen = QColor(255, 40, 0, 220)
+        monkeypatch.setattr(ed, "_choose_color", lambda fk, ct: chosen)
+
+        ed._on_swatch_clicked("SetTextColor", ed._textcolor_edit)
+        assert ed._textcolor_edit.text() == "255 40 0 220"
+
+    def test_accept_emits_rule_changed(self, qapp, monkeypatch):
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetTextColor", "0 0 0 255"]]), index=0)
+        received = _collect_signals(ed)
+
+        chosen = QColor(200, 100, 50, 180)
+        monkeypatch.setattr(ed, "_choose_color", lambda fk, ct: chosen)
+
+        ed._on_swatch_clicked("SetTextColor", ed._textcolor_edit)
+        assert len(received) == 1
+        _idx, updated = received[0]
+        tc_vals = [v for k, v in updated.actions if k == "SetTextColor"]
+        assert tc_vals == ["200 100 50 180"]
+
+    def test_accept_updates_bgcolor_field(self, qapp, monkeypatch):
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+
+        chosen = QColor(0, 0, 0, 150)
+        monkeypatch.setattr(ed, "_choose_color", lambda fk, ct: chosen)
+
+        ed._on_swatch_clicked("SetBackgroundColor", ed._bgcolor_edit)
+        assert ed._bgcolor_edit.text() == "0 0 0 150"
+
+    def test_accept_updates_swatch_color(self, qapp, monkeypatch):
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+
+        chosen = QColor(255, 0, 0, 255)
+        monkeypatch.setattr(ed, "_choose_color", lambda fk, ct: chosen)
+
+        ed._on_swatch_clicked("SetTextColor", ed._textcolor_edit)
+        # Swatch should now show a red colour — not transparent
+        assert "transparent" not in ed._textcolor_swatch.styleSheet()
+
+    # ── _on_swatch_clicked: cancel ────────────────────────────────
+
+    def test_cancel_does_not_change_edit(self, qapp, monkeypatch):
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetTextColor", "10 20 30 200"]]), index=0)
+
+        monkeypatch.setattr(ed, "_choose_color", lambda fk, ct: QColor())
+
+        ed._on_swatch_clicked("SetTextColor", ed._textcolor_edit)
+        assert ed._textcolor_edit.text() == "10 20 30 200"
+
+    def test_cancel_does_not_emit_rule_changed(self, qapp, monkeypatch):
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetTextColor", "10 20 30 200"]]), index=0)
+        received = _collect_signals(ed)
+
+        monkeypatch.setattr(ed, "_choose_color", lambda fk, ct: QColor())
+
+        ed._on_swatch_clicked("SetTextColor", ed._textcolor_edit)
+        assert len(received) == 0
+
+    # ── set_rule does not open dialog ────────────────────────────
+
+    def test_set_rule_does_not_call_choose_color(self, qapp, monkeypatch):
+        """set_rule must never open a colour picker."""
+        from PySide6.QtGui import QColor
+        opened: list[bool] = []
+
+        def _fake_choose(fk, ct):
+            opened.append(True)
+            return QColor()
+
+        ed = _make_editor(qapp)
+        monkeypatch.setattr(ed, "_choose_color", _fake_choose)
+        ed.set_rule(_rule(actions=[["SetTextColor", "255 0 0 255"]]), index=0)
+        assert opened == []
+
+    # ── field_key passed to _choose_color ────────────────────────
+
+    def test_field_key_passed_to_choose_color(self, qapp, monkeypatch):
+        from PySide6.QtGui import QColor
+        received_keys: list[str] = []
+
+        def _fake_choose(fk, ct):
+            received_keys.append(fk)
+            return QColor()   # cancel
+
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        monkeypatch.setattr(ed, "_choose_color", _fake_choose)
+
+        ed._on_swatch_clicked("SetBorderColor", ed._bordercolor_edit)
+        assert received_keys == ["SetBorderColor"]

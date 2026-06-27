@@ -1,4 +1,4 @@
-"""RuleDetailEditor — v4.0.0  (P13.4 Editor Input Polish)
+"""RuleDetailEditor — v5.0.0  (P13.6 Color Picker Dialog)
 
 Design contract (unchanged from v2.3.0):
   - set_rule(rule, index) populates all fields WITHOUT emitting rule_changed.
@@ -16,10 +16,15 @@ P13.1 visual improvements:
 
 P13.4 input polish:
   - SetFontSize replaced with QSpinBox (range 0–60; 0 = not set → "—").
-  - Colour fields (SetTextColor / SetBorderColor / SetBackgroundColor) retain
-    text input but gain a live colour-swatch preview label beside them.
-    Invalid colour strings show a dashed-red swatch; empty → transparent.
+  - Colour fields gain a live colour-swatch preview label.
   - PlayAlertSound and MinimapIcon fields show a one-line format hint.
+
+P13.6 colour picker:
+  - Clicking a colour swatch opens QColorDialog (with alpha channel).
+  - On accept: R G B A written back to the field + rule_changed emitted.
+  - On cancel: field and emit are both unchanged.
+  - _choose_color() is the testable hook for monkeypatching in tests.
+  - Manual text entry still works; invalid values show dashed-red swatch.
 """
 
 from __future__ import annotations
@@ -29,14 +34,22 @@ import copy
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QFormLayout,
     QGroupBox, QLabel, QCheckBox, QComboBox, QLineEdit, QPlainTextEdit,
-    QSpinBox, QStackedWidget,
+    QSpinBox, QStackedWidget, QColorDialog,
 )
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Signal, Qt, QEvent
+from PySide6.QtGui import QColor
 
 from core.models import FilterRule
 
 
 _ACTIONS = ["Show", "Hide", "Continue"]
+
+# Default colours used when the text field is empty or invalid
+_COLOR_DEFAULTS: dict[str, tuple[int, int, int, int]] = {
+    "SetTextColor":       (255, 255, 255, 255),
+    "SetBorderColor":     (0,   0,   0,   255),
+    "SetBackgroundColor": (0,   0,   0,   180),
+}
 
 
 class RuleDetailEditor(QWidget):
@@ -215,7 +228,12 @@ class RuleDetailEditor(QWidget):
         self._basetype_edit.editingFinished.connect(self._on_any_field_changed)
 
     def _make_color_row(self, obj_name: str, placeholder: str) -> tuple:
-        """Return (container_widget, QLineEdit, swatch_QLabel) for a colour field."""
+        """Return (container_widget, QLineEdit, swatch_QLabel) for a colour field.
+
+        The swatch is clickable: it has a PointingHand cursor and emits mouse
+        press events that eventFilter() converts into a _on_swatch_clicked call.
+        The tooltip (per-field text) is set by the caller after this returns.
+        """
         container = QWidget()
         hlayout = QHBoxLayout(container)
         hlayout.setContentsMargins(0, 0, 0, 0)
@@ -229,7 +247,7 @@ class RuleDetailEditor(QWidget):
         swatch = QLabel()
         swatch.setObjectName("ColorSwatch")
         swatch.setFixedSize(20, 18)
-        swatch.setToolTip("色彩預覽")
+        swatch.setCursor(Qt.CursorShape.PointingHandCursor)
         self._update_one_swatch(swatch, "")
         hlayout.addWidget(swatch)
 
@@ -245,20 +263,26 @@ class RuleDetailEditor(QWidget):
         self._fontsize_spin.setSpecialValueText("—")
         form.addRow("SetFontSize", self._fontsize_spin)
 
-        # Colour fields: QLineEdit + live swatch
+        # Colour fields: QLineEdit + clickable swatch
         tc_row, self._textcolor_edit, self._textcolor_swatch = self._make_color_row(
             "RuleDetailTextColor", "255 200 0 255"
         )
+        self._textcolor_swatch.setToolTip("點選文字顏色")
+        self._textcolor_swatch.installEventFilter(self)
         form.addRow("SetTextColor", tc_row)
 
         bc_row, self._bordercolor_edit, self._bordercolor_swatch = self._make_color_row(
             "RuleDetailBorderColor", "0 0 0 0"
         )
+        self._bordercolor_swatch.setToolTip("點選邊框顏色")
+        self._bordercolor_swatch.installEventFilter(self)
         form.addRow("SetBorderColor", bc_row)
 
         bg_row, self._bgcolor_edit, self._bgcolor_swatch = self._make_color_row(
             "RuleDetailBgColor", "0 0 0 180"
         )
+        self._bgcolor_swatch.setToolTip("點選背景顏色")
+        self._bgcolor_swatch.installEventFilter(self)
         form.addRow("SetBackgroundColor", bg_row)
 
         vlayout.addWidget(box)
@@ -417,6 +441,68 @@ class RuleDetailEditor(QWidget):
         )
 
         return rule
+
+    # ------------------------------------------------------------------
+    # Colour picker — event filter + dialog hook
+    # ------------------------------------------------------------------
+
+    def eventFilter(self, watched, event) -> bool:
+        """Route swatch mouse-press events to _on_swatch_clicked."""
+        if event.type() == QEvent.Type.MouseButtonPress:
+            if watched is self._textcolor_swatch:
+                self._on_swatch_clicked("SetTextColor", self._textcolor_edit)
+                return True
+            if watched is self._bordercolor_swatch:
+                self._on_swatch_clicked("SetBorderColor", self._bordercolor_edit)
+                return True
+            if watched is self._bgcolor_swatch:
+                self._on_swatch_clicked("SetBackgroundColor", self._bgcolor_edit)
+                return True
+        return super().eventFilter(watched, event)
+
+    def _on_swatch_clicked(self, field_key: str, edit: QLineEdit) -> None:
+        """Open colour picker; on accept write RGBA back to *edit* and emit."""
+        color = self._choose_color(field_key, edit.text())
+        if not color.isValid():
+            return  # user cancelled — no change, no emit
+        r, g, b, a = color.red(), color.green(), color.blue(), color.alpha()
+        edit.setText(f"{r} {g} {b} {a}")
+        # setText → textChanged → _update_color_swatches (swatch live update)
+        # editingFinished is NOT triggered by setText, so call the slot manually
+        self._on_any_field_changed()
+
+    def _choose_color(self, field_key: str, current_text: str) -> QColor:
+        """Open QColorDialog and return the chosen QColor (invalid if cancelled).
+
+        Extracted as its own method so tests can monkeypatch it without
+        opening a real GUI dialog.
+        """
+        initial = self._parse_rgba_to_qcolor(current_text, field_key)
+        return QColorDialog.getColor(
+            initial,
+            self,
+            "選擇顏色",
+            QColorDialog.ColorDialogOption.ShowAlphaChannel,
+        )
+
+    def _parse_rgba_to_qcolor(self, text: str, field_key: str) -> QColor:
+        """Parse 'R G B [A]' text into QColor; fall back to field default."""
+        default = _COLOR_DEFAULTS.get(field_key, (255, 255, 255, 255))
+        if text.strip():
+            try:
+                vals = [max(0, min(255, int(p))) for p in text.strip().split()[:4]]
+                while len(vals) < 4:
+                    vals.append(255)
+                r, g, b, a = vals
+                return QColor(r, g, b, a)
+            except (ValueError, TypeError):
+                pass
+        r, g, b, a = default
+        return QColor(r, g, b, a)
+
+    # ------------------------------------------------------------------
+    # Colour swatch live preview
+    # ------------------------------------------------------------------
 
     def _update_color_swatches(self) -> None:
         """Refresh all three colour swatches from current field text."""
