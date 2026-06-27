@@ -1,4 +1,4 @@
-"""SearchBar Widget — v0.8.0
+"""SearchBar Widget — v0.9.0
 
 A compact horizontal search bar with text input, match counter, and
 previous / next navigation buttons.
@@ -14,12 +14,16 @@ Public API:
     current_text() -> str      — raw text in the input box
     clear()                    — clear input WITHOUT emitting search_changed
     focus_input()              — give keyboard focus to the input field
+
+Keyboard shortcuts (handled inside this widget):
+    Escape  — clear input and emit search_changed("") to reset highlights
 """
 
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QLineEdit, QLabel, QPushButton,
 )
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Signal, Qt, QKeyCombination
+from PySide6.QtGui import QKeySequence, QShortcut
 
 
 class SearchBar(QWidget):
@@ -68,6 +72,11 @@ class SearchBar(QWidget):
         self._prev_btn.clicked.connect(self.prev_requested)
         self._next_btn.clicked.connect(self.next_requested)
 
+        # Escape clears the input and fires search_changed("") via textChanged
+        esc = QShortcut(QKeySequence(Qt.Key.Key_Escape), self._input)
+        esc.setContext(Qt.ShortcutContext.WidgetShortcut)
+        esc.activated.connect(self._on_escape)
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -108,3 +117,11 @@ class SearchBar(QWidget):
         """Give keyboard focus to the input field and select all text."""
         self._input.setFocus()
         self._input.selectAll()
+
+    # ------------------------------------------------------------------
+    # Internal slots
+    # ------------------------------------------------------------------
+
+    def _on_escape(self) -> None:
+        """Clear input without blockSignals — lets search_changed("") fire naturally."""
+        self._input.clear()

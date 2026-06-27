@@ -16,6 +16,7 @@ from core.commands import (
     MoveRuleCommand,
 )
 from core.search import search_rules, SearchQuery
+from services.settings_service import WorkspaceSettings
 from widgets.rule_list import RuleListWidget
 from widgets.search_bar import SearchBar
 from editor.rule_editor import RuleEditorWidget
@@ -23,11 +24,12 @@ from ui.preview_panel import PreviewPanel
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, settings: WorkspaceSettings | None = None):
         super().__init__()
         self._doc = FilterDocument()
         self._selected_index: int = -1
         self._editing_snapshot: FilterRule | None = None   # deep-copy at load time
+        self._settings = settings or WorkspaceSettings()
 
         # Search state
         self._search_results: list[int] = []   # real_indices of matching rules
@@ -40,6 +42,12 @@ class MainWindow(QMainWindow):
         self._build_menus()
         self._build_toolbar()
         self._build_shortcuts()
+
+        # Restore workspace state (geometry, splitter, section states)
+        self._settings.restore_geometry(self)
+        self._settings.restore_splitter(self._splitter)
+        self._restore_section_states()
+
         self._refresh_status()
 
     # ------------------------------------------------------------------
@@ -58,7 +66,7 @@ class MainWindow(QMainWindow):
         v.addWidget(self.search_bar)
 
         # ── 3-pane splitter ──────────────────────────────────────────
-        splitter = QSplitter(Qt.Orientation.Horizontal)
+        self._splitter = QSplitter(Qt.Orientation.Horizontal)
 
         self.rule_list = RuleListWidget()
         self.rule_list.setMinimumWidth(200)
@@ -70,14 +78,14 @@ class MainWindow(QMainWindow):
         self.preview_panel.setMinimumWidth(180)
         self.preview_panel.setMaximumWidth(340)
 
-        splitter.addWidget(self.rule_list)
-        splitter.addWidget(self.rule_editor)
-        splitter.addWidget(self.preview_panel)
-        splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 3)
-        splitter.setStretchFactor(2, 1)
-        splitter.setSizes([240, 720, 260])
-        v.addWidget(splitter, stretch=1)
+        self._splitter.addWidget(self.rule_list)
+        self._splitter.addWidget(self.rule_editor)
+        self._splitter.addWidget(self.preview_panel)
+        self._splitter.setStretchFactor(0, 1)
+        self._splitter.setStretchFactor(1, 3)
+        self._splitter.setStretchFactor(2, 1)
+        self._splitter.setSizes([240, 720, 260])
+        v.addWidget(self._splitter, stretch=1)
 
         # ── Status bar ───────────────────────────────────────────────
         self._status_lbl = QLabel()
@@ -105,6 +113,10 @@ class MainWindow(QMainWindow):
         a.setShortcut(QKeySequence.StandardKey.Open)
         a.triggered.connect(self.open_file)
         fm.addAction(a)
+
+        # Recent Files submenu
+        self._recent_menu = fm.addMenu("最近開啟(&R)")
+        self._rebuild_recent_menu()
 
         a = QAction("儲存(&S)", self)
         a.setShortcut(QKeySequence.StandardKey.Save)
@@ -181,6 +193,77 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Shift+F3"),   self).activated.connect(self._on_search_prev)
 
     # ------------------------------------------------------------------
+    # Settings helpers
+    # ------------------------------------------------------------------
+
+    def _restore_section_states(self) -> None:
+        states = self._settings.restore_section_states()
+        if states.get("conditions", True):
+            self.rule_editor._cond_panel.expand()
+        else:
+            self.rule_editor._cond_panel.collapse()
+        if states.get("appearance", True):
+            self.rule_editor._app_panel.expand()
+        else:
+            self.rule_editor._app_panel.collapse()
+        if states.get("audio", False):
+            self.rule_editor._audio_panel.expand()
+        else:
+            self.rule_editor._audio_panel.collapse()
+
+    def _save_workspace(self) -> None:
+        """Persist geometry, splitter, and section states on close."""
+        self._settings.save_geometry(self)
+        self._settings.save_splitter(self._splitter)
+        self._settings.save_section_states({
+            "conditions": self.rule_editor._cond_panel.save_state()["expanded"],
+            "appearance": self.rule_editor._app_panel.save_state()["expanded"],
+            "audio":      self.rule_editor._audio_panel.save_state()["expanded"],
+        })
+
+    # ------------------------------------------------------------------
+    # Recent Files menu
+    # ------------------------------------------------------------------
+
+    def _rebuild_recent_menu(self) -> None:
+        """Repopulate the 最近開啟 submenu from settings."""
+        self._recent_menu.clear()
+        paths = self._settings.recent_files()
+        if not paths:
+            placeholder = QAction("（無最近開啟檔案）", self)
+            placeholder.setEnabled(False)
+            self._recent_menu.addAction(placeholder)
+        else:
+            for path in paths:
+                label = os.path.basename(path)
+                a = QAction(label, self)
+                a.setToolTip(path)
+                # Use default-arg capture to avoid late-binding closure bug
+                a.triggered.connect(lambda _=False, p=path: self._open_recent(p))
+                self._recent_menu.addAction(a)
+            self._recent_menu.addSeparator()
+            clear_action = QAction("清除清單", self)
+            clear_action.triggered.connect(self._clear_recent_files)
+            self._recent_menu.addAction(clear_action)
+
+    def _open_recent(self, path: str) -> None:
+        """Open a recent file; show error dialog if file no longer exists."""
+        if not os.path.isfile(path):
+            QMessageBox.warning(
+                self,
+                "找不到檔案",
+                f"檔案不存在或已被移動：\n{path}",
+            )
+            return
+        if not self._confirm_discard():
+            return
+        self.load_file(path)
+
+    def _clear_recent_files(self) -> None:
+        self._settings.clear_recent_files()
+        self._rebuild_recent_menu()
+
+    # ------------------------------------------------------------------
     # UI synchronization helpers — editor + preview always in sync
     # ------------------------------------------------------------------
 
@@ -240,6 +323,10 @@ class MainWindow(QMainWindow):
         self._refresh_status()
         self._refresh_undo_actions()
         self.setWindowTitle(f"POE2 Filter Studio — {os.path.basename(path)}")
+
+        # Update recent files list and menu
+        self._settings.add_recent_file(path)
+        self._rebuild_recent_menu()
 
     def save_file(self):
         if not self._doc.file_path:
@@ -520,6 +607,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         if self._confirm_discard():
+            self._save_workspace()
             event.accept()
         else:
             event.ignore()
