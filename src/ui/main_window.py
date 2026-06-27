@@ -31,6 +31,7 @@ from widgets.search_bar import SearchBar
 from ui.rule_detail_editor import RuleDetailEditor
 from ui.preview_panel import PreviewPanel
 from ui.category_sidebar import CategorySidebarWidget
+from presenters.status_presenter import StatusPresenter
 
 
 class MainWindow(QMainWindow):
@@ -47,6 +48,7 @@ class MainWindow(QMainWindow):
         self._settings = settings or WorkspaceSettings()
         self._settings_mgr = settings_mgr or SettingsManager()
         self._section_map: SectionMap | None = None
+        self._status_presenter = StatusPresenter()
 
         # Search state
         self._search_results: list[int] = []
@@ -841,20 +843,23 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _refresh_status(self):
-        name  = os.path.basename(self._doc.file_path) if self._doc.file_path else "（未開啟）"
-        dirty = " [已修改]" if self._doc.dirty else ""
-        count = self._doc.visible_count
-        self._status_lbl.setText(f"{name}{dirty}  ·  {count} 條規則")
+        self._status_lbl.setText(
+            self._status_presenter.format_status_text(
+                self._doc.file_path,
+                self._doc.dirty,
+                self._doc.visible_count,
+            )
+        )
         self._update_title()
 
     def _update_title(self) -> None:
         """Set window title — adds '* ' prefix when there are unsaved changes."""
-        prefix = "* " if self._doc.dirty else ""
-        if self._doc.file_path:
-            name = os.path.basename(self._doc.file_path)
-            self.setWindowTitle(f"{prefix}POE2 Filter Studio — {name}")
-        else:
-            self.setWindowTitle(f"{prefix}POE2 Filter Studio")
+        self.setWindowTitle(
+            self._status_presenter.format_window_title(
+                self._doc.file_path,
+                self._doc.dirty,
+            )
+        )
 
     def _confirm_discard(self) -> bool:
         if not self._doc.dirty:
