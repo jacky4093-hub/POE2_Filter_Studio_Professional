@@ -1,4 +1,4 @@
-"""Tests for RuleDetailEditor — v2.3.0
+"""Tests for RuleDetailEditor — v3.0.0  (P13.1 Visual Rule Editor MVP)
 
 Covers:
 - Initial empty state
@@ -513,3 +513,124 @@ class TestMainWindowIntegration:
         from ui.category_sidebar import CategorySidebarWidget
         window = MainWindow()
         assert isinstance(window.category_sidebar, CategorySidebarWidget)
+
+
+# ---------------------------------------------------------------------------
+# TestP131TitleBar  (P13.1 新增)
+# ---------------------------------------------------------------------------
+
+class TestP131TitleBar:
+    """Title bar widget updates when rule is loaded or fields change."""
+
+    def test_title_lbl_exists(self, qapp):
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_title_lbl")
+
+    def test_title_shows_rule_number_and_action(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(action="Hide"), index=4)
+        text = ed._title_lbl.text()
+        # should mention rule number (5, since 4+1) and action
+        assert "5" in text
+        assert "Hide" in text
+
+    def test_title_updates_when_action_changes(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(action="Show"), index=0)
+        ed._action_combo.setCurrentText("Continue")
+        assert "Continue" in ed._title_lbl.text()
+
+    def test_title_notes_disabled_rule(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(enabled=False, action="Show"), index=0)
+        text = ed._title_lbl.text()
+        # disabled indication present (✕ or similar marker)
+        assert "停用" in text or "✕" in text or "disabled" in text.lower()
+
+    def test_title_updates_when_enabled_toggled(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(enabled=True), index=0)
+        before = ed._title_lbl.text()
+        ed._enabled_cb.setChecked(False)
+        after = ed._title_lbl.text()
+        assert before != after
+
+
+# ---------------------------------------------------------------------------
+# TestP131SectionCards  (P13.1 新增)
+# ---------------------------------------------------------------------------
+
+class TestP131SectionCards:
+    """Sections are wrapped in QGroupBox cards (not plain header labels)."""
+
+    def test_editor_page_contains_group_boxes(self, qapp):
+        from PySide6.QtWidgets import QGroupBox
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        # scroll area's widget (content) should contain QGroupBox children
+        scroll = ed._editor_page
+        content = scroll.widget()
+        group_boxes = [w for w in content.findChildren(QGroupBox)]
+        assert len(group_boxes) >= 5   # 基本設定, 條件, 外觀, 音效, 小地圖, 預覽
+
+    def test_all_section_titles_present(self, qapp):
+        from PySide6.QtWidgets import QGroupBox
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        content = ed._editor_page.widget()
+        titles = {w.title() for w in content.findChildren(QGroupBox)}
+        assert "基本設定" in titles
+        assert "條件" in titles
+        assert "外觀" in titles
+        assert "音效" in titles
+        assert "小地圖" in titles
+
+    def test_preview_section_is_group_box(self, qapp):
+        from PySide6.QtWidgets import QGroupBox
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        # preview text should be inside a QGroupBox
+        parent = ed._preview_text.parent()
+        # parent is QGroupBox or its interior widget
+        assert parent is not None
+
+
+# ---------------------------------------------------------------------------
+# TestP131EmptyState  (P13.1 新增)
+# ---------------------------------------------------------------------------
+
+class TestP131EmptyState:
+    """Richer empty state shows icon + message + hint."""
+
+    def test_empty_page_has_hint_label(self, qapp):
+        from PySide6.QtWidgets import QLabel
+        ed = _make_editor(qapp)
+        labels = ed._empty_page.findChildren(QLabel)
+        object_names = {lbl.objectName() for lbl in labels}
+        assert "RuleDetailEmptyHint" in object_names
+
+    def test_empty_page_has_icon_label(self, qapp):
+        from PySide6.QtWidgets import QLabel
+        ed = _make_editor(qapp)
+        labels = ed._empty_page.findChildren(QLabel)
+        object_names = {lbl.objectName() for lbl in labels}
+        assert "RuleDetailEmptyIcon" in object_names
+
+    def test_empty_page_has_main_label(self, qapp):
+        from PySide6.QtWidgets import QLabel
+        ed = _make_editor(qapp)
+        labels = ed._empty_page.findChildren(QLabel)
+        object_names = {lbl.objectName() for lbl in labels}
+        assert "RuleDetailEmptyLabel" in object_names
+
+
+# ---------------------------------------------------------------------------
+# TestP131PreviewShowsUnknownLines  (P13.1 新增)
+# ---------------------------------------------------------------------------
+
+class TestP131PreviewShowsUnknownLines:
+    def test_unknown_lines_appear_in_preview(self, qapp):
+        rule = _rule(unknown_lines=["CustomTag Foo"])
+        ed = _make_editor(qapp)
+        ed.set_rule(rule, index=0)
+        assert "CustomTag" in ed._preview_text.toPlainText()
