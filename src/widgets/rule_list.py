@@ -513,6 +513,8 @@ class RuleListWidget(QWidget):
     @staticmethod
     def _section_font() -> QFont:
         f = QFont()
+        if f.pointSize() <= 0:
+            f.setPointSize(11)
         f.setBold(True)
         return f
 

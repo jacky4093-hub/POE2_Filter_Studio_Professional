@@ -76,7 +76,6 @@ WelcomeScreen {
     padding: 5px 8px;
     text-align: left;
     font-size: 13px;
-    qproperty-alignment: AlignLeft;
 }
 
 #WelcomeRecentItem:hover:enabled {

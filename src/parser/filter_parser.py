@@ -43,6 +43,9 @@ def _parse_body_line(stripped: str, rule: FilterRule):
     parts = stripped.split(None, 1)
     keyword = parts[0]
     value = parts[1] if len(parts) > 1 else ''
+    # Strip inline comment from value (consistent with _detect_block_header).
+    # Inline comments in POE2 filters always start with ' #' after the value.
+    value = value.partition('#')[0].rstrip()
     if keyword in _CONDITION_SET:
         rule.conditions.append([keyword, value])
     elif keyword in _ACTION_SET:
