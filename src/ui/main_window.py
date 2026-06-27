@@ -34,6 +34,7 @@ from ui.category_sidebar import CategorySidebarWidget
 from ui.validation_panel import ValidationPanel
 from ui.save_warning_dialog import SaveWarningDialog
 from core.validator import validate_document, ValidationSeverity
+from core.quick_fix import get_quick_fixes, apply_quick_fix
 from presenters.status_presenter import StatusPresenter
 from controllers.recent_files_controller import RecentFilesController
 from controllers.navigation_search_controller import NavigationSearchController
@@ -179,6 +180,7 @@ class MainWindow(QMainWindow):
         self.rule_card_browser.move_rule_requested.connect(self._on_move_rule)
         self.rule_detail_editor.rule_changed.connect(self._on_detail_rule_changed)
         self.validation_panel.issue_clicked.connect(self._on_validation_issue_clicked)
+        self.validation_panel.fix_requested.connect(self._on_quick_fix_requested)
 
         self.rule_actions_toolbar.new_requested.connect(self._on_add_rule)
         self.rule_actions_toolbar.delete_requested.connect(self._on_toolbar_delete)
@@ -855,14 +857,35 @@ class MainWindow(QMainWindow):
         self._refresh_validation()
 
     def _refresh_validation(self) -> None:
-        """Re-run validate_document and push results to the ValidationPanel."""
+        """Re-run validate_document, compute quick fixes, push to ValidationPanel."""
         issues = validate_document(self._doc)
-        self.validation_panel.refresh(issues)
+        fixes_per_issue: list[list] = []
+        for issue in issues:
+            if 0 <= issue.rule_index < len(self._doc.rules):
+                rule = self._doc.rules[issue.rule_index]
+                fixes_per_issue.append(get_quick_fixes(rule, issue))
+            else:
+                fixes_per_issue.append([])
+        self.validation_panel.refresh(issues, fixes_per_issue)
 
     def _on_validation_issue_clicked(self, rule_index: int) -> None:
         """Navigate to the rule associated with a clicked validation issue."""
         if 0 <= rule_index < len(self._doc.rules):
             self._navigate_to(rule_index)
+
+    def _on_quick_fix_requested(self, rule_index: int, fix) -> None:
+        """Apply a QuickFix via the standard UpdateRuleCommand (supports undo)."""
+        if not (0 <= rule_index < len(self._doc.rules)):
+            return
+        old_rule = copy.deepcopy(self._doc.rules[rule_index])
+        new_rule = apply_quick_fix(old_rule, fix)
+        cmd = UpdateRuleCommand(self._doc, rule_index, old_rule, new_rule)
+        self._doc.execute(cmd)
+        self._reload_rule_list()
+        if rule_index == self._selected_index:
+            self._load_rule_to_ui(rule_index)
+        self._refresh_status()
+        self._refresh_undo_actions()
 
     def _update_title(self) -> None:
         """Set window title — adds '* ' prefix when there are unsaved changes."""
