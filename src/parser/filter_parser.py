@@ -6,14 +6,31 @@ _HEADER_SET = set(BLOCK_HEADERS)
 
 
 def _detect_block_header(stripped: str):
-    """Return (keyword, inline_comment, enabled) or (None, None, None)."""
+    """Return (keyword, inline_comment, enabled) or (None, None, None).
+
+    Handles both enabled ('Show') and disabled ('# Show') block headers.
+    A disabled header is a line whose first non-whitespace token is '#'
+    followed immediately by a recognised block keyword.  Any text after
+    a second '#' on the same line is treated as an inline comment.
+    """
     if not stripped:
         return None, None, None
-    main_part, _, comment_part = stripped.partition('#')
+
+    enabled = True
+    rest = stripped
+
+    # Disabled block: line starts with '#' — check if the remainder is a keyword
+    if stripped.startswith('#'):
+        rest = stripped[1:].strip()
+        enabled = False
+
+    # Split off optional inline comment (the part after the next '#')
+    main_part, _, comment_part = rest.partition('#')
     keyword = main_part.strip()
     inline = comment_part.strip()
+
     if keyword in _HEADER_SET:
-        return keyword, inline, True
+        return keyword, inline, enabled
     return None, None, None
 
 

@@ -72,10 +72,6 @@ Continue
     assert "Continue" in exported
 
 
-@pytest.mark.xfail(
-    reason="Parser currently does not recognize disabled block headers like '# Show' / '# Hide'",
-    strict=False,
-)
 def test_disabled_block_roundtrip():
     source = """
 # Show
@@ -86,8 +82,6 @@ def test_disabled_block_roundtrip():
 
     parsed, exported, reparsed = _roundtrip(source)
 
-    # The exporter can render disabled block headers, but current parser support
-    # for reading '# Show' / '# Hide' is not implemented.
     assert len(parsed) == 2
     assert parsed[0].action == "Show"
     assert parsed[0].enabled is False
