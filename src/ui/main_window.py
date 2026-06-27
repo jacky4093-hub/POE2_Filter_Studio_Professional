@@ -2,6 +2,8 @@ import base64
 import copy
 import os
 
+from app_info import APP_NAME, APP_VERSION
+
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
     QStackedWidget, QFileDialog, QMessageBox, QLabel,
@@ -66,7 +68,7 @@ class MainWindow(QMainWindow):
         # Category filter (v2.1.0)
         self._active_category: Category = Category.ALL
 
-        self.setWindowTitle("POE2 Filter Studio")
+        self.setWindowTitle(f"{APP_NAME} {APP_VERSION}")
         self.resize(1250, 720)
 
         self._build_ui()
@@ -277,6 +279,17 @@ class MainWindow(QMainWindow):
         a.setShortcut(QKeySequence("Ctrl+,"))
         a.triggered.connect(self.open_preferences)
         em.addAction(a)
+
+        hm = mb.addMenu("說明(&H)")
+
+        self._about_action = QAction("關於(&A)…", self)
+        self._about_action.triggered.connect(self._show_about)
+        hm.addAction(self._about_action)
+
+    def _show_about(self) -> None:
+        from ui.about_dialog import AboutDialog
+        dlg = AboutDialog(self)
+        dlg.exec()
 
     def _build_toolbar(self):
         tb = self.addToolBar("工具列")

@@ -130,8 +130,10 @@ class TestSaveClearsDirty:
 
 class TestWindowTitle:
     def test_initial_title(self, qapp):
+        from app_info import APP_NAME, APP_VERSION
         w = MainWindow()
-        assert w.windowTitle() == "POE2 Filter Studio"
+        assert APP_NAME in w.windowTitle()
+        assert APP_VERSION in w.windowTitle()
 
     def test_title_no_star_when_clean(self, qapp):
         w = MainWindow()
@@ -179,9 +181,12 @@ class TestWindowTitle:
 
 class TestUpdateTitle:
     def test_update_title_no_path_clean(self, qapp):
+        from app_info import APP_NAME, APP_VERSION
         w = MainWindow()
         w._update_title()
-        assert w.windowTitle() == "POE2 Filter Studio"
+        assert APP_NAME in w.windowTitle()
+        assert APP_VERSION in w.windowTitle()
+        assert "*" not in w.windowTitle()
 
     def test_update_title_no_path_dirty(self, qapp):
         w = MainWindow()

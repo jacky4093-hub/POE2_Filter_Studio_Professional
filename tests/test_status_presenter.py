@@ -1,13 +1,16 @@
+from app_info import APP_NAME, APP_VERSION
 from presenters.status_presenter import StatusPresenter
+
+_BASE = f"{APP_NAME} {APP_VERSION}"
 
 
 def test_title_formatting_for_clean_and_dirty_states():
     presenter = StatusPresenter()
 
-    assert presenter.format_window_title("", False) == "POE2 Filter Studio"
-    assert presenter.format_window_title("", True) == "* POE2 Filter Studio"
-    assert presenter.format_window_title("my.filter", False) == "POE2 Filter Studio — my.filter"
-    assert presenter.format_window_title("my.filter", True) == "* POE2 Filter Studio — my.filter"
+    assert presenter.format_window_title("", False) == _BASE
+    assert presenter.format_window_title("", True) == f"* {_BASE}"
+    assert presenter.format_window_title("my.filter", False) == f"{_BASE} — my.filter"
+    assert presenter.format_window_title("my.filter", True) == f"* {_BASE} — my.filter"
 
 
 def test_status_text_uses_file_name_dirty_marker_and_rule_count():
