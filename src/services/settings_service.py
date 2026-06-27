@@ -1,4 +1,4 @@
-"""WorkspaceSettings — v0.9.0
+"""WorkspaceSettings — v1.0.0
 
 Thin wrapper around QSettings (INI format) that persists workspace state.
 
@@ -23,6 +23,11 @@ INI layout:
     1 = C:/path/to/file.filter
     2 = ...
 
+    [SectionCollapse/<8-char-hash>]
+    0   = true      <- first_rule_index of section = expanded state
+    42  = false
+    132 = true
+
 Public API:
     save_geometry(window)
     restore_geometry(window)
@@ -30,12 +35,16 @@ Public API:
     restore_splitter(splitter)
     save_section_states(states: dict[str, bool])
     restore_section_states() -> dict[str, bool]
+    save_section_collapse_states(file_path, states: dict[int, bool])
+    restore_section_collapse_states(file_path) -> dict[int, bool]
     add_recent_file(path)
     recent_files() -> list[str]
     clear_recent_files()
 """
 
 from __future__ import annotations
+
+import hashlib
 
 from PySide6.QtCore import QSettings, QByteArray
 
@@ -156,6 +165,45 @@ class WorkspaceSettings:
         self._write_recent([])
 
     # ------------------------------------------------------------------
+    # Filter section collapse states (keyed by first_rule_index)
+    # ------------------------------------------------------------------
+
+    def save_section_collapse_states(
+        self, file_path: str, states: dict[int, bool]
+    ) -> None:
+        """Persist {first_rule_index: expanded} for *file_path*.
+
+        Keyed by first_rule_index (int) to avoid duplicate section-name
+        conflicts.  The file_path is hashed to a safe INI group name.
+        """
+        group = f"SectionCollapse/{_file_key(file_path)}"
+        self._qs.beginGroup(group)
+        self._qs.remove("")          # clear stale entries
+        for idx, expanded in states.items():
+            self._qs.setValue(str(idx), expanded)
+        self._qs.endGroup()
+        self._qs.sync()
+
+    def restore_section_collapse_states(
+        self, file_path: str
+    ) -> dict[int, bool]:
+        """Return {first_rule_index: expanded} for *file_path*.
+
+        Returns an empty dict if nothing was saved (caller defaults to expanded).
+        """
+        group = f"SectionCollapse/{_file_key(file_path)}"
+        self._qs.beginGroup(group)
+        result: dict[int, bool] = {}
+        for key in self._qs.childKeys():
+            try:
+                idx = int(key)
+                result[idx] = _to_bool(self._qs.value(key), True)
+            except ValueError:
+                pass
+        self._qs.endGroup()
+        return result
+
+    # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
@@ -193,3 +241,13 @@ def _to_int(value, default: int) -> int:
 def _norm(path: str) -> str:
     """Normalise path for deduplication (lowercase, forward slashes)."""
     return path.replace("\\", "/").lower()
+
+
+def _file_key(file_path: str) -> str:
+    """Return an 8-char hex key derived from a normalised file path.
+
+    Used as an INI group suffix so that special path characters (colons,
+    backslashes, spaces) do not appear in the group name.
+    """
+    normalised = file_path.replace("\\", "/").lower()
+    return hashlib.md5(normalised.encode()).hexdigest()[:8]

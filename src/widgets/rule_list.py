@@ -1,10 +1,12 @@
-"""RuleListWidget — v0.8.0
+"""RuleListWidget — v1.0.0
 
-Changes from v0.6.0:
-  - Added search-result highlight state (_highlight_indices, _current_highlight)
-  - refresh() applies background colours for matching / current items
-  - set_highlights(matches, current) / clear_highlights() — new public API
-  - foreground colours (Show=green, others=grey) are preserved independently
+Changes from v0.8.0:
+  - Internal widget changed from QListWidget to QTreeWidget
+  - Rules without sections are shown as flat top-level items (backward-compat)
+  - Rules with sections are grouped under collapsible SectionItems
+  - set_highlights() auto-expands sections that contain a search match
+  - Section collapse state tracked in _section_expanded {name: bool}
+  - get_section_states() / apply_section_states() for settings persistence
 
 Public API (signals unchanged):
   Signals:
@@ -12,53 +14,57 @@ Public API (signals unchanged):
     add_rule_requested()
     delete_rule_requested(int)   — real index
     copy_rule_requested(int)     — real index
-    move_rule_requested(int,int) — from_real, to_real
+    move_rule_requested(int,int) — from_real, to_real (within-section only)
 
   Methods:
-    load_rules(rules)
+    load_rules(rules, section_map=None)
     refresh()
     select_real_index(real_index)
-    set_highlights(matches: set[int], current: int = -1)   ← NEW v0.8.0
-    clear_highlights()                                      ← NEW v0.8.0
+    set_highlights(matches: set[int], current: int = -1)
+    clear_highlights()
+    get_section_states() -> dict[int, bool]    NEW v1.0.0 (key=first_rule_index)
+    apply_section_states(states: dict[int, bool])  NEW v1.0.0
 """
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
-    QListWidget, QListWidgetItem, QPushButton,
+    QTreeWidget, QTreeWidgetItem, QPushButton,
     QAbstractItemView,
 )
 from PySide6.QtCore import Signal, Qt
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QFont
 
 from core.models import FilterRule
 
 
 # ---------------------------------------------------------------------------
-# Highlight colours
+# Roles and colours
 # ---------------------------------------------------------------------------
 
-_HIGHLIGHT_CURRENT = QColor("#5a4200")   # bright amber  — cursor match
-_HIGHLIGHT_OTHER   = QColor("#2d2000")   # dark amber     — other matches
+# Stores first_rule_index on section items; None on rule items
+SECTION_ROLE = Qt.ItemDataRole.UserRole + 1
+
+_HIGHLIGHT_CURRENT = QColor("#5a4200")   # amber — cursor match
+_HIGHLIGHT_OTHER   = QColor("#2d2000")   # dark amber — other matches
+
+_COLOUR_SHOW     = QColor("#90ee90")
+_COLOUR_OTHER    = QColor("#aaaaaa")
+_COLOUR_SECTION  = QColor("#ccaa55")
+_COLOUR_UNGROUP  = QColor("#888888")
 
 
 # ---------------------------------------------------------------------------
-# _DraggableListWidget
+# _DraggableTreeWidget
 # ---------------------------------------------------------------------------
 
-class _DraggableListWidget(QListWidget):
-    """QListWidget subclass that converts drag-drop into a signal.
+class _DraggableTreeWidget(QTreeWidget):
+    """QTreeWidget that converts within-section drag-drop to a signal.
 
-    The built-in QListWidget InternalMove would reorder items before we
-    could intercept it, so dropEvent is overridden to:
-      1. Compute where the user intended to drop (from_row, to_row)
-      2. Emit move_requested(from_row, to_row)
-      3. Reject the drop (event.IgnoreAction) so Qt does NOT reorder items
-
-    The actual reorder is handled externally by FilterDocument + MoveRuleCommand,
-    after which load_rules() rebuilds the list from the document state.
+    Cross-section drops are silently rejected to preserve section boundaries.
+    Actual reorder is handled externally via MoveRuleCommand.
     """
 
-    move_requested = Signal(int, int)   # from_row, to_row (display indices)
+    move_requested = Signal(int, int)   # from_real_idx, to_real_idx
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -67,47 +73,76 @@ class _DraggableListWidget(QListWidget):
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
         self.setDropIndicatorShown(True)
-        self._drag_from_row: int = -1
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self._drag_from_item: QTreeWidgetItem | None = None
 
     def startDrag(self, supported_actions):
-        self._drag_from_row = self.currentRow()
+        self._drag_from_item = self.currentItem()
         super().startDrag(supported_actions)
 
     def dropEvent(self, event):
-        from_row = self._drag_from_row
-        self._drag_from_row = -1
+        from_item = self._drag_from_item
+        self._drag_from_item = None
 
-        if from_row < 0 or self.count() == 0:
+        if from_item is None:
             event.ignore()
             return
 
-        target = self.indexAt(event.position().toPoint())
+        # Reject drags of section header items
+        if from_item.data(0, SECTION_ROLE) is not None:
+            event.ignore()
+            return
 
-        if not target.isValid():
-            # Dropped in empty space below all items → treat as last position
-            to_row = self.count() - 1
-        else:
-            drop_row  = target.row()
-            indicator = self.dropIndicatorPosition()
-            below     = (indicator == QAbstractItemView.DropIndicatorPosition.BelowItem)
+        from_real = from_item.data(0, Qt.ItemDataRole.UserRole)
+        if from_real is None or from_real < 0:
+            event.ignore()
+            return
 
-            # Compute the intended FINAL position of the dragged item.
-            # pop(from_row) + insert(to_row) semantics:
-            #   moving forward (from < drop): shift = -1 for AboveItem, 0 for BelowItem
-            #   moving backward (from > drop): shift = 0 for AboveItem, +1 for BelowItem
-            if from_row < drop_row:
-                to_row = drop_row if below else drop_row - 1
+        # Determine drop target item
+        target_item = self.itemAt(event.position().toPoint())
+
+        if target_item is None:
+            # Dropped in empty space — move to last item within from_item's parent
+            from_parent = from_item.parent()
+            if from_parent is None:
+                # Flat mode: move to last top-level item
+                count = self.topLevelItemCount()
+                if count == 0:
+                    event.ignore()
+                    return
+                to_item = self.topLevelItem(count - 1)
             else:
-                to_row = drop_row + 1 if below else drop_row
+                count = from_parent.childCount()
+                to_item = from_parent.child(count - 1)
+        elif target_item.data(0, SECTION_ROLE) is not None:
+            # Dropped on a section header — reject cross-section
+            event.ignore()
+            return
+        else:
+            # Dropped on a rule item — check same parent
+            from_parent = from_item.parent()
+            to_parent   = target_item.parent()
+            if from_parent != to_parent:
+                # Cross-section drop — reject
+                event.ignore()
+                return
+            to_item = target_item
 
-        to_row = max(0, min(to_row, self.count() - 1))
+        if to_item is None:
+            event.ignore()
+            return
 
-        # Reject built-in item reorder — external Command handles this
+        to_real = to_item.data(0, Qt.ItemDataRole.UserRole)
+        if to_real is None or to_real < 0:
+            event.ignore()
+            return
+
+        # Reject built-in item reorder — Command handles the actual move
         event.setDropAction(Qt.DropAction.IgnoreAction)
         event.accept()
 
-        if from_row != to_row:
-            self.move_requested.emit(from_row, to_row)
+        if from_real != to_real:
+            self.move_requested.emit(from_real, to_real)
 
 
 # ---------------------------------------------------------------------------
@@ -115,18 +150,22 @@ class _DraggableListWidget(QListWidget):
 # ---------------------------------------------------------------------------
 
 class RuleListWidget(QWidget):
-    rule_selected         = Signal(int)       # real index into rules list
+    rule_selected         = Signal(int)
     add_rule_requested    = Signal()
-    delete_rule_requested = Signal(int)       # real index
-    copy_rule_requested   = Signal(int)       # real index
-    move_rule_requested   = Signal(int, int)  # from_real_index, to_real_index
+    delete_rule_requested = Signal(int)
+    copy_rule_requested   = Signal(int)
+    move_rule_requested   = Signal(int, int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._rules: list[FilterRule] = []
-        # Search highlight state — updated by set_highlights() / clear_highlights()
+        self._section_map = None           # SectionMap or None
         self._highlight_indices: set[int] = set()
         self._current_highlight: int      = -1
+        # Collapse state keyed by section NAME for in-session stability
+        self._section_expanded: dict[str, bool] = {}
+        # O(1) lookup: real_index -> QTreeWidgetItem (rebuilt on every refresh)
+        self._real_to_item: dict[int, QTreeWidgetItem] = {}
         self._setup_ui()
 
     def _setup_ui(self):
@@ -143,89 +182,257 @@ class RuleListWidget(QWidget):
             btn_row.addWidget(b)
         layout.addLayout(btn_row)
 
-        self.list_widget = _DraggableListWidget()
+        self.list_widget = _DraggableTreeWidget()
+        self.list_widget.setHeaderHidden(True)
         self.list_widget.setAlternatingRowColors(True)
+        self.list_widget.setAnimated(False)   # faster rebuild
         layout.addWidget(self.list_widget)
 
         self.btn_add.clicked.connect(self._on_add)
         self.btn_del.clicked.connect(self._on_delete)
         self.btn_copy.clicked.connect(self._on_copy)
-        self.list_widget.currentRowChanged.connect(self._on_row_changed)
+        self.list_widget.currentItemChanged.connect(self._on_item_changed)
         self.list_widget.move_requested.connect(self._on_move_requested)
+        self.list_widget.itemCollapsed.connect(
+            lambda item: self._on_section_toggled(item, False)
+        )
+        self.list_widget.itemExpanded.connect(
+            lambda item: self._on_section_toggled(item, True)
+        )
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    def load_rules(self, rules: list[FilterRule]):
+    def load_rules(self, rules: list[FilterRule], section_map=None):
         self._rules = rules
+        self._section_map = section_map
         self.refresh()
 
     def refresh(self):
-        current_row = self.list_widget.currentRow()
+        current_real = self._get_current_real_index()
+        self._real_to_item.clear()
+
         self.list_widget.blockSignals(True)
         self.list_widget.clear()
 
-        display_num = 1
-        for real_idx, rule in enumerate(self._rules):
-            if rule.action == "__TAIL__":
-                continue
-            label = self._make_label(display_num, rule)
-            item  = QListWidgetItem(label)
-            item.setData(Qt.ItemDataRole.UserRole, real_idx)
+        has_sections = (
+            self._section_map is not None
+            and bool(self._section_map.sections)
+        )
 
-            # Foreground: Show=green, others=grey (unchanged from v0.6.0)
-            item.setForeground(
-                QColor("#90ee90") if rule.action == "Show" else QColor("#aaaaaa")
-            )
-
-            # Background: search highlight (does NOT affect foreground colour)
-            if real_idx == self._current_highlight:
-                item.setBackground(_HIGHLIGHT_CURRENT)
-            elif real_idx in self._highlight_indices:
-                item.setBackground(_HIGHLIGHT_OTHER)
-
-            self.list_widget.addItem(item)
-            display_num += 1
-
-        count = self.list_widget.count()
-        if count > 0:
-            target = max(0, min(current_row, count - 1))
-            # Restore selection with signals blocked — callers own navigation
-            self.list_widget.setCurrentRow(target)
+        if has_sections:
+            self._build_tree_with_sections(current_real)
+        else:
+            self._build_flat_list(current_real)
 
         self.list_widget.blockSignals(False)
 
-    def select_real_index(self, real_index: int):
-        """Highlight the list row that corresponds to rules[real_index]."""
-        for row in range(self.list_widget.count()):
-            item = self.list_widget.item(row)
-            if item and item.data(Qt.ItemDataRole.UserRole) == real_index:
-                self.list_widget.blockSignals(True)
-                self.list_widget.setCurrentRow(row)
-                self.list_widget.blockSignals(False)
-                return
+    def select_real_index(self, real_index: int) -> None:
+        item = self._real_to_item.get(real_index)
+        if item:
+            self.list_widget.blockSignals(True)
+            self.list_widget.setCurrentItem(item)
+            self.list_widget.scrollToItem(item)
+            self.list_widget.blockSignals(False)
 
     def set_highlights(self, matches: set[int], current: int = -1) -> None:
-        """Apply search-result highlights and rebuild the list.
-
-        Args:
-            matches: set of real_indices to highlight (all matching rules)
-            current: real_index of the currently focused match (-1 = none)
-        """
         self._highlight_indices = matches
         self._current_highlight = current
+        # Auto-expand sections that contain a match BEFORE refresh
+        if matches and self._section_map and self._section_map.sections:
+            self._mark_sections_expanded_for(matches)
         self.refresh()
 
     def clear_highlights(self) -> None:
-        """Remove all search highlighting and rebuild the list."""
         self._highlight_indices = set()
         self._current_highlight = -1
         self.refresh()
 
+    def get_section_states(self) -> dict[int, bool]:
+        """Return {first_rule_index: expanded} for all known sections.
+
+        Converts from the in-memory name-keyed dict to the index-keyed
+        format expected by WorkspaceSettings.
+        """
+        if not self._section_map:
+            return {}
+        result: dict[int, bool] = {}
+        for sec in self._section_map.sections:
+            result[sec.first_rule_index] = self._section_expanded.get(sec.name, True)
+        return result
+
+    def apply_section_states(self, states: dict[int, bool]) -> None:
+        """Restore collapse states from {first_rule_index: expanded}.
+
+        Converts index keys back to name keys via the current section_map.
+        """
+        if not self._section_map or not states:
+            return
+        for sec in self._section_map.sections:
+            if sec.first_rule_index in states:
+                self._section_expanded[sec.name] = states[sec.first_rule_index]
+        # Reflect in the live tree without a full refresh
+        for i in range(self.list_widget.topLevelItemCount()):
+            top = self.list_widget.topLevelItem(i)
+            fid = top.data(0, SECTION_ROLE)
+            if fid is None:
+                continue
+            for sec in self._section_map.sections:
+                if sec.first_rule_index == fid:
+                    expanded = self._section_expanded.get(sec.name, True)
+                    self.list_widget.blockSignals(True)
+                    top.setExpanded(expanded)
+                    self.list_widget.blockSignals(False)
+                    break
+
     # ------------------------------------------------------------------
-    # Helpers
+    # Tree builders
     # ------------------------------------------------------------------
+
+    def _build_flat_list(self, current_real: int) -> None:
+        item_to_select: QTreeWidgetItem | None = None
+        display_num = 1
+
+        for real_idx, rule in enumerate(self._rules):
+            if rule.action == "__TAIL__":
+                continue
+            item = self._make_rule_item(None, real_idx, rule, display_num)
+            if real_idx == current_real:
+                item_to_select = item
+            display_num += 1
+
+        if item_to_select:
+            self.list_widget.setCurrentItem(item_to_select)
+
+    def _build_tree_with_sections(self, current_real: int) -> None:
+        smap = self._section_map
+        item_to_select: QTreeWidgetItem | None = None
+        section_items: dict[int, QTreeWidgetItem] = {}   # section_idx → item
+
+        # ── Phase 1: create all top-level containers ───────────────────
+        unsec_item: QTreeWidgetItem | None = None
+        if smap.unsectioned_indices:
+            expanded = self._section_expanded.get("(未分類)", True)
+            unsec_item = QTreeWidgetItem(["(未分類)"])
+            unsec_item.setData(0, Qt.ItemDataRole.UserRole, -1)
+            unsec_item.setFlags(
+                unsec_item.flags()
+                & ~Qt.ItemFlag.ItemIsSelectable
+                & ~Qt.ItemFlag.ItemIsDragEnabled
+            )
+            unsec_item.setForeground(0, _COLOUR_UNGROUP)
+            self.list_widget.addTopLevelItem(unsec_item)
+            unsec_item.setExpanded(expanded)
+
+        font = self._section_font()
+        for sec_idx, section in enumerate(smap.sections):
+            expanded = self._section_expanded.get(section.name, True)
+            arrow = "▼" if expanded else "▶"
+            label = f"{arrow}  {section.name}  ({section.rule_count})"
+            sec_item = QTreeWidgetItem([label])
+            sec_item.setData(0, Qt.ItemDataRole.UserRole, -1)
+            sec_item.setData(0, SECTION_ROLE, section.first_rule_index)
+            sec_item.setFlags(
+                sec_item.flags()
+                & ~Qt.ItemFlag.ItemIsSelectable
+                & ~Qt.ItemFlag.ItemIsDragEnabled
+            )
+            sec_item.setForeground(0, _COLOUR_SECTION)
+            sec_item.setFont(0, font)
+            self.list_widget.addTopLevelItem(sec_item)
+            sec_item.setExpanded(expanded)
+            section_items[sec_idx] = sec_item
+
+        # ── Phase 2: add rule items as children (document order) ───────
+        display_num = 1
+        for real_idx, rule in enumerate(self._rules):
+            if rule.action == "__TAIL__":
+                continue
+
+            sec_idx = smap.rule_to_section.get(real_idx, -1)
+            parent = (
+                unsec_item if sec_idx < 0
+                else section_items.get(sec_idx)
+            )
+            if parent is None:
+                continue
+
+            child = self._make_rule_item(parent, real_idx, rule, display_num)
+            if real_idx == current_real:
+                item_to_select = child
+            display_num += 1
+
+        # ── Phase 3: select ────────────────────────────────────────────
+        if item_to_select:
+            self.list_widget.setCurrentItem(item_to_select)
+            self.list_widget.scrollToItem(item_to_select)
+
+    def _make_rule_item(
+        self,
+        parent: QTreeWidgetItem | None,
+        real_idx: int,
+        rule: FilterRule,
+        display_num: int,
+    ) -> QTreeWidgetItem:
+        label = RuleListWidget._make_label(display_num, rule)
+        item = QTreeWidgetItem([label])
+        item.setData(0, Qt.ItemDataRole.UserRole, real_idx)
+
+        item.setForeground(
+            0, _COLOUR_SHOW if rule.action == "Show" else _COLOUR_OTHER
+        )
+        if real_idx == self._current_highlight:
+            item.setBackground(0, _HIGHLIGHT_CURRENT)
+        elif real_idx in self._highlight_indices:
+            item.setBackground(0, _HIGHLIGHT_OTHER)
+
+        if parent is None:
+            self.list_widget.addTopLevelItem(item)
+        else:
+            parent.addChild(item)
+
+        self._real_to_item[real_idx] = item
+        return item
+
+    def _make_section_item_label(self, section_name: str, rule_count: int) -> str:
+        expanded = self._section_expanded.get(section_name, True)
+        arrow = "▼" if expanded else "▶"
+        return f"{arrow}  {section_name}  ({rule_count})"
+
+    # ------------------------------------------------------------------
+    # Search-highlight helpers
+    # ------------------------------------------------------------------
+
+    def _mark_sections_expanded_for(self, real_indices: set[int]) -> None:
+        """Ensure sections containing any matched index are expanded."""
+        smap = self._section_map
+        if not smap:
+            return
+        for real_idx in real_indices:
+            sec_idx = smap.rule_to_section.get(real_idx, -1)
+            if sec_idx >= 0:
+                sec = smap.sections[sec_idx]
+                self._section_expanded[sec.name] = True
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _get_current_real_index(self) -> int:
+        item = self.list_widget.currentItem()
+        if item is None:
+            return -1
+        val = item.data(0, Qt.ItemDataRole.UserRole)
+        if val is None or val < 0:
+            return -1
+        return val
+
+    @staticmethod
+    def _section_font() -> QFont:
+        f = QFont()
+        f.setBold(True)
+        return f
 
     @staticmethod
     def _make_label(display_num: int, rule: FilterRule) -> str:
@@ -247,13 +454,28 @@ class RuleListWidget(QWidget):
     # Slots
     # ------------------------------------------------------------------
 
-    def _on_row_changed(self, row: int):
-        if row < 0:
+    def _on_item_changed(self, current: QTreeWidgetItem, previous):
+        if current is None:
             return
-        item = self.list_widget.item(row)
-        if item is None:
+        # Skip section header items
+        if current.data(0, SECTION_ROLE) is not None:
             return
-        self.rule_selected.emit(item.data(Qt.ItemDataRole.UserRole))
+        val = current.data(0, Qt.ItemDataRole.UserRole)
+        if val is None or val < 0:
+            return
+        self.rule_selected.emit(val)
+
+    def _on_section_toggled(self, item: QTreeWidgetItem, expanded: bool) -> None:
+        fid = item.data(0, SECTION_ROLE)
+        if fid is None or not self._section_map:
+            return
+        for sec in self._section_map.sections:
+            if sec.first_rule_index == fid:
+                self._section_expanded[sec.name] = expanded
+                # Update arrow in label
+                arrow = "▼" if expanded else "▶"
+                item.setText(0, f"{arrow}  {sec.name}  ({sec.rule_count})")
+                break
 
     def _on_add(self):
         self.add_rule_requested.emit()
@@ -262,25 +484,24 @@ class RuleListWidget(QWidget):
         item = self.list_widget.currentItem()
         if item is None:
             return
-        self.delete_rule_requested.emit(item.data(Qt.ItemDataRole.UserRole))
+        if item.data(0, SECTION_ROLE) is not None:
+            return   # can't delete a section header
+        val = item.data(0, Qt.ItemDataRole.UserRole)
+        if val is None or val < 0:
+            return
+        self.delete_rule_requested.emit(val)
 
     def _on_copy(self):
         item = self.list_widget.currentItem()
         if item is None:
             return
-        self.copy_rule_requested.emit(item.data(Qt.ItemDataRole.UserRole))
-
-    def _on_move_requested(self, from_row: int, to_row: int):
-        """Translate display-row indices to real indices and emit move_rule_requested.
-
-        Since __TAIL__ is never shown, display_row == real_index for all
-        visible items.  The UserRole lookup is kept for defensive correctness.
-        """
-        from_item = self.list_widget.item(from_row)
-        to_item   = self.list_widget.item(to_row)
-        if from_item is None or to_item is None:
+        if item.data(0, SECTION_ROLE) is not None:
             return
-        from_real = from_item.data(Qt.ItemDataRole.UserRole)
-        to_real   = to_item.data(Qt.ItemDataRole.UserRole)
+        val = item.data(0, Qt.ItemDataRole.UserRole)
+        if val is None or val < 0:
+            return
+        self.copy_rule_requested.emit(val)
+
+    def _on_move_requested(self, from_real: int, to_real: int):
         if from_real != to_real:
             self.move_rule_requested.emit(from_real, to_real)

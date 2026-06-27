@@ -16,6 +16,7 @@ from core.commands import (
     MoveRuleCommand,
 )
 from core.search import search_rules, SearchQuery
+from core.sections import build_section_map, SectionMap
 from services.settings_service import WorkspaceSettings
 from widgets.rule_list import RuleListWidget
 from widgets.search_bar import SearchBar
@@ -28,12 +29,13 @@ class MainWindow(QMainWindow):
         super().__init__()
         self._doc = FilterDocument()
         self._selected_index: int = -1
-        self._editing_snapshot: FilterRule | None = None   # deep-copy at load time
+        self._editing_snapshot: FilterRule | None = None
         self._settings = settings or WorkspaceSettings()
+        self._section_map: SectionMap | None = None
 
         # Search state
-        self._search_results: list[int] = []   # real_indices of matching rules
-        self._search_cursor:  int       = -1   # index into _search_results
+        self._search_results: list[int] = []
+        self._search_cursor:  int       = -1
 
         self.setWindowTitle("POE2 Filter Studio")
         self.resize(1250, 720)
@@ -61,11 +63,9 @@ class MainWindow(QMainWindow):
         v.setContentsMargins(4, 4, 4, 2)
         v.setSpacing(2)
 
-        # ── Search bar (top) ─────────────────────────────────────────
         self.search_bar = SearchBar()
         v.addWidget(self.search_bar)
 
-        # ── 3-pane splitter ──────────────────────────────────────────
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
 
         self.rule_list = RuleListWidget()
@@ -87,11 +87,9 @@ class MainWindow(QMainWindow):
         self._splitter.setSizes([240, 720, 260])
         v.addWidget(self._splitter, stretch=1)
 
-        # ── Status bar ───────────────────────────────────────────────
         self._status_lbl = QLabel()
         self.statusBar().addPermanentWidget(self._status_lbl)
 
-        # ── Signal wiring ────────────────────────────────────────────
         self.rule_list.rule_selected.connect(self._on_rule_selected)
         self.rule_list.add_rule_requested.connect(self._on_add_rule)
         self.rule_list.delete_rule_requested.connect(self._on_delete_rule)
@@ -106,7 +104,6 @@ class MainWindow(QMainWindow):
     def _build_menus(self):
         mb = self.menuBar()
 
-        # ── 檔案 ──────────────────────────────────────────────────────
         fm = mb.addMenu("檔案(&F)")
 
         a = QAction("開啟(&O)…", self)
@@ -114,7 +111,6 @@ class MainWindow(QMainWindow):
         a.triggered.connect(self.open_file)
         fm.addAction(a)
 
-        # Recent Files submenu
         self._recent_menu = fm.addMenu("最近開啟(&R)")
         self._rebuild_recent_menu()
 
@@ -135,7 +131,6 @@ class MainWindow(QMainWindow):
         a.triggered.connect(self.close)
         fm.addAction(a)
 
-        # ── 編輯 ──────────────────────────────────────────────────────
         em = mb.addMenu("編輯(&E)")
 
         self._undo_action = QAction("復原(&U)", self)
@@ -188,9 +183,8 @@ class MainWindow(QMainWindow):
         tb.addAction(self._tb_redo)
 
     def _build_shortcuts(self):
-        """Register keyboard shortcuts not tied to menu actions."""
-        QShortcut(QKeySequence("F3"),         self).activated.connect(self._on_search_next)
-        QShortcut(QKeySequence("Shift+F3"),   self).activated.connect(self._on_search_prev)
+        QShortcut(QKeySequence("F3"),       self).activated.connect(self._on_search_next)
+        QShortcut(QKeySequence("Shift+F3"), self).activated.connect(self._on_search_prev)
 
     # ------------------------------------------------------------------
     # Settings helpers
@@ -212,7 +206,6 @@ class MainWindow(QMainWindow):
             self.rule_editor._audio_panel.collapse()
 
     def _save_workspace(self) -> None:
-        """Persist geometry, splitter, and section states on close."""
         self._settings.save_geometry(self)
         self._settings.save_splitter(self._splitter)
         self._settings.save_section_states({
@@ -220,13 +213,17 @@ class MainWindow(QMainWindow):
             "appearance": self.rule_editor._app_panel.save_state()["expanded"],
             "audio":      self.rule_editor._audio_panel.save_state()["expanded"],
         })
+        if self._doc.file_path:
+            self._settings.save_section_collapse_states(
+                self._doc.file_path,
+                self.rule_list.get_section_states(),
+            )
 
     # ------------------------------------------------------------------
     # Recent Files menu
     # ------------------------------------------------------------------
 
     def _rebuild_recent_menu(self) -> None:
-        """Repopulate the 最近開啟 submenu from settings."""
         self._recent_menu.clear()
         paths = self._settings.recent_files()
         if not paths:
@@ -238,7 +235,6 @@ class MainWindow(QMainWindow):
                 label = os.path.basename(path)
                 a = QAction(label, self)
                 a.setToolTip(path)
-                # Use default-arg capture to avoid late-binding closure bug
                 a.triggered.connect(lambda _=False, p=path: self._open_recent(p))
                 self._recent_menu.addAction(a)
             self._recent_menu.addSeparator()
@@ -247,11 +243,9 @@ class MainWindow(QMainWindow):
             self._recent_menu.addAction(clear_action)
 
     def _open_recent(self, path: str) -> None:
-        """Open a recent file; show error dialog if file no longer exists."""
         if not os.path.isfile(path):
             QMessageBox.warning(
-                self,
-                "找不到檔案",
+                self, "找不到檔案",
                 f"檔案不存在或已被移動：\n{path}",
             )
             return
@@ -264,13 +258,10 @@ class MainWindow(QMainWindow):
         self._rebuild_recent_menu()
 
     # ------------------------------------------------------------------
-    # UI synchronization helpers — editor + preview always in sync
+    # UI synchronization helpers
     # ------------------------------------------------------------------
 
     def _load_rule_to_ui(self, real_index: int) -> None:
-        """Load rule at real_index into editor, preview, and snapshot.
-        Also updates _selected_index.
-        """
         if 0 <= real_index < len(self._doc.rules):
             rule = self._doc.rules[real_index]
             self._selected_index   = real_index
@@ -281,16 +272,19 @@ class MainWindow(QMainWindow):
             self._clear_rule_ui()
 
     def _clear_rule_ui(self) -> None:
-        """Reset editor and preview to no-selection state."""
         self._selected_index   = -1
         self._editing_snapshot = None
         self.rule_editor.setEnabled(False)
         self.preview_panel.show_empty()
 
     def _navigate_to(self, real_index: int) -> None:
-        """Select a rule in the list and sync editor + preview + snapshot."""
         self.rule_list.select_real_index(real_index)
         self._load_rule_to_ui(real_index)
+
+    def _reload_rule_list(self) -> None:
+        """Rebuild section_map and reload RuleListWidget. Call after every mutation."""
+        self._section_map = build_section_map(self._doc.rules)
+        self.rule_list.load_rules(self._doc.rules, self._section_map)
 
     # ------------------------------------------------------------------
     # File operations
@@ -314,17 +308,23 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "錯誤", f"無法開啟檔案：\n{e}")
             return
 
-        self._doc.load_from_text(text, path)   # also clears undo/redo stacks
-        self.rule_list.load_rules(self._doc.rules)
+        self._doc.load_from_text(text, path)
+        self._section_map = build_section_map(self._doc.rules)
+        self.rule_list.load_rules(self._doc.rules, self._section_map)
         self._clear_rule_ui()
-        self.search_bar.clear()                 # clear search on new file
+        self.search_bar.clear()
         self._search_results = []
         self._search_cursor  = -1
+
+        # Restore per-file section collapse states
+        saved = self._settings.restore_section_collapse_states(path)
+        if saved:
+            self.rule_list.apply_section_states(saved)
+
         self._refresh_status()
         self._refresh_undo_actions()
         self.setWindowTitle(f"POE2 Filter Studio — {os.path.basename(path)}")
 
-        # Update recent files list and menu
         self._settings.add_recent_file(path)
         self._rebuild_recent_menu()
 
@@ -374,7 +374,7 @@ class MainWindow(QMainWindow):
         self._refresh_after_undo_redo()
 
     def _refresh_after_undo_redo(self):
-        self.rule_list.load_rules(self._doc.rules)
+        self._reload_rule_list()
         if 0 <= self._selected_index < len(self._doc.rules):
             self.rule_list.select_real_index(self._selected_index)
             self._load_rule_to_ui(self._selected_index)
@@ -393,16 +393,13 @@ class MainWindow(QMainWindow):
         self._tb_redo.setEnabled(can_r)
 
     # ------------------------------------------------------------------
-    # Rule operations — all routed through Commands
+    # Rule operations
     # ------------------------------------------------------------------
 
     def _on_rule_selected(self, real_index: int):
         self._load_rule_to_ui(real_index)
 
     def _on_rule_changed(self):
-        """RuleEditor._apply() has already mutated the rule in-place.
-        Wrap the change in an UpdateRuleCommand so it can be undone.
-        """
         idx = self._selected_index
         if not (0 <= idx < len(self._doc.rules)):
             return
@@ -412,29 +409,29 @@ class MainWindow(QMainWindow):
             old_rule = copy.deepcopy(self._doc.rules[idx])
 
         new_rule = copy.deepcopy(self._doc.rules[idx])
-
         cmd = UpdateRuleCommand(self._doc, idx, old_rule, new_rule)
         self._doc.execute(cmd)
 
         self._editing_snapshot = copy.deepcopy(self._doc.rules[idx])
         self.preview_panel.show_rule(self._doc.rules[idx])
 
-        # _refresh_search calls refresh() internally — no separate rule_list.refresh()
+        # UpdateRuleCommand doesn't change pre_lines → section_map unchanged
+        # _refresh_search calls rule_list.refresh() via clear/set_highlights
         self._refresh_search()
         self._refresh_status()
         self._refresh_undo_actions()
 
     def _on_add_rule(self):
         new_rule = FilterRule(action="Show", pre_lines=[""])
-        if 0 <= self._selected_index < len(self._doc.rules):
-            insert_at = self._selected_index + 1
-        else:
-            insert_at = self._doc.tail_insert_pos()
-
+        insert_at = (
+            self._selected_index + 1
+            if 0 <= self._selected_index < len(self._doc.rules)
+            else self._doc.tail_insert_pos()
+        )
         cmd = AddRuleCommand(self._doc, insert_at, new_rule)
         self._doc.execute(cmd)
 
-        self.rule_list.load_rules(self._doc.rules)
+        self._reload_rule_list()
         self.rule_list.select_real_index(insert_at)
         self._load_rule_to_ui(insert_at)
         self._refresh_search()
@@ -454,21 +451,19 @@ class MainWindow(QMainWindow):
         cmd = DeleteRuleCommand(self._doc, real_index)
         self._doc.execute(cmd)
 
-        self.rule_list.load_rules(self._doc.rules)
+        self._reload_rule_list()
         self._clear_rule_ui()
         self._refresh_search()
         self._refresh_status()
         self._refresh_undo_actions()
 
     def _on_move_rule(self, from_real: int, to_real: int):
-        """Handle drag-and-drop reorder from RuleListWidget."""
         cmd = MoveRuleCommand(self._doc, from_real, to_real)
         if cmd.is_noop:
             return
-
         self._doc.execute(cmd)
 
-        self.rule_list.load_rules(self._doc.rules)
+        self._reload_rule_list()
         self.rule_list.select_real_index(cmd.to_index)
         self._load_rule_to_ui(cmd.to_index)
         self._refresh_search()
@@ -478,12 +473,11 @@ class MainWindow(QMainWindow):
     def _on_copy_rule(self, real_index: int):
         if not (0 <= real_index < len(self._doc.rules)):
             return
-
         cmd = DuplicateRuleCommand(self._doc, real_index)
         self._doc.execute(cmd)
         new_index = cmd.new_index
 
-        self.rule_list.load_rules(self._doc.rules)
+        self._reload_rule_list()
         self.rule_list.select_real_index(new_index)
         self._load_rule_to_ui(new_index)
         self._refresh_search()
@@ -495,7 +489,6 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _on_search_changed(self, text: str) -> None:
-        """Fired on every keystroke in the search bar."""
         if not text.strip():
             self._search_results = []
             self._search_cursor  = -1
@@ -530,27 +523,12 @@ class MainWindow(QMainWindow):
         self._go_to_cursor()
 
     def _go_to_cursor(self) -> None:
-        """Apply highlights for current cursor and navigate to matching rule."""
         current_real = self._search_results[self._search_cursor]
         self.rule_list.set_highlights(set(self._search_results), current_real)
         self.search_bar.set_count(len(self._search_results), self._search_cursor + 1)
         self._navigate_to(current_real)
 
-    # ------------------------------------------------------------------
-    # Search — refresh after rule mutations
-    # ------------------------------------------------------------------
-
     def _refresh_search(self) -> None:
-        """Re-run search and update highlights after any rule mutation.
-
-        Tries to keep the cursor pointing at the same real_index. If the
-        previously focused rule is still in the results, stays on it.
-        Otherwise resets cursor to 0.
-
-        This method always results in rule_list.refresh() being called
-        (via set_highlights or clear_highlights) — callers must NOT call
-        rule_list.refresh() again after this.
-        """
         text = self.search_bar.current_text()
         if not text.strip():
             self.rule_list.clear_highlights()
@@ -560,13 +538,10 @@ class MainWindow(QMainWindow):
             return
 
         results = search_rules(self._doc.rules, SearchQuery(text=text))
-
-        # Recover cursor: keep pointing at the same real_index if still present
         old_real = (
             self._search_results[self._search_cursor]
             if 0 <= self._search_cursor < len(self._search_results) else -1
         )
-
         self._search_results = results
 
         if not results:
@@ -575,11 +550,9 @@ class MainWindow(QMainWindow):
             self.search_bar.set_count(0, 0)
             return
 
-        if old_real in results:
-            self._search_cursor = results.index(old_real)
-        else:
-            self._search_cursor = 0
-
+        self._search_cursor = (
+            results.index(old_real) if old_real in results else 0
+        )
         current_real = results[self._search_cursor]
         self.rule_list.set_highlights(set(results), current_real)
         self.search_bar.set_count(len(results), self._search_cursor + 1)
