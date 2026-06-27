@@ -1,0 +1,83 @@
+/* ============================================================
+   Live Preview Panel — v2.0.0  (P13.2)
+   Loaded automatically by bootstrap.apply_theme() (sorted glob).
+   ============================================================ */
+
+/* ── Outer widget ── */
+
+#PreviewPanel {
+    background: #0f1117;
+}
+
+/* ── Header ── */
+
+#PreviewHeader {
+    background: transparent;
+    border-bottom: 1px solid #1e2435;
+}
+
+#PreviewTitle {
+    color: #6b7fa3;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    padding: 0 0 4px 0;
+}
+
+/* ── Action badge (dynamic colour set inline) ── */
+
+#PreviewActionBadge {
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-size: 11px;
+}
+
+/* ── Disabled banner ── */
+
+#PreviewDisabledBanner {
+    color: #f59e0b;
+    background: #1c1500;
+    border: 1px solid #78350f;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 3px 6px;
+}
+
+/* ── Condition label ── */
+
+#PreviewConditionLabel {
+    color: #4a5568;
+    font-size: 10px;
+    font-style: italic;
+}
+
+/* ── Info badges ── */
+
+#PreviewBadge {
+    color: #94a3b8;
+    background: #161b27;
+    border: 1px solid #1e2435;
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 10px;
+}
+
+/* ── Unknown actions / lines ── */
+
+#PreviewUnknownLabel {
+    color: #4a5568;
+    background: #0d1117;
+    border: 1px solid #1e2435;
+    border-radius: 3px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 10px;
+    padding: 4px 6px;
+}
+
+/* ── Empty state ── */
+
+#PreviewEmptyLabel {
+    color: #2d3748;
+    font-size: 12px;
+}

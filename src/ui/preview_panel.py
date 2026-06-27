@@ -1,20 +1,29 @@
-"""Live Preview Panel — v0.7.0
+"""Live Preview Panel — v2.0.0  (P13.2 Visual Rule Editor)
 
-Architecture
-------------
+Architecture (unchanged from v0.7.0)
+--------------------------------------
 PreviewStyle          — pure Python dataclass, zero Qt dependency
 parse_rule_style()    — pure function: FilterRule → PreviewStyle, never raises
 PreviewPanel          — QWidget that renders PreviewStyle, read-only
 
-Public API of PreviewPanel:
+Public API of PreviewPanel (unchanged):
     show_rule(rule: FilterRule)  — update display for the given rule
     show_empty()                 — show "no selection" placeholder
 
-Design contract:
+Design contract (unchanged):
     • PreviewPanel never modifies FilterRule or FilterDocument
     • PreviewPanel never calls any Command
     • parse_rule_style() is a side-effect-free pure function
     • Every parse error falls back to PreviewStyle defaults silently
+
+P13.2 additions:
+    • Title bar shows "即時預覽" with styled separator
+    • _disabled_banner  — shows when rule.enabled is False
+    • _condition_lbl    — summarises Class / BaseType conditions
+    • _unknown_lbl      — shows unrecognised actions + unknown_lines
+    • Action badge uses colored backgrounds (Show=green, Hide=red, Continue=blue)
+    • Disabled rules render item with dimmed palette + ban banner
+    • Invalid colour strings are silently caught (no crash)
 """
 
 from __future__ import annotations
@@ -84,8 +93,17 @@ def _derive_item_name(rule: "FilterRule") -> str:
     return "Item Name"
 
 
+# Known action keys that parse_rule_style handles
+_KNOWN_ACTIONS = frozenset({
+    "SetTextColor", "SetBackgroundColor", "SetBorderColor", "SetFontSize",
+    "MinimapIcon", "PlayEffect",
+    "PlayAlertSound", "PlayAlertSoundPositional",
+    "CustomAlertSound", "CustomAlertSoundOptional",
+})
+
+
 # ---------------------------------------------------------------------------
-# parse_rule_style — pure function
+# parse_rule_style — pure function (unchanged behaviour from v0.7.0)
 # ---------------------------------------------------------------------------
 
 def parse_rule_style(rule: "FilterRule") -> PreviewStyle:
@@ -155,13 +173,19 @@ from PySide6.QtCore import Qt
 class PreviewPanel(QWidget):
     """Read-only visual preview of a FilterRule.
 
-    Public API:
+    Public API (unchanged from v0.7.0):
         show_rule(rule)  — render the rule
         show_empty()     — show no-selection placeholder
+
+    P13.2 additions (internal, preserved for tests):
+        _disabled_banner — shown when rule.enabled is False
+        _condition_lbl   — summarises Class / BaseType conditions
+        _unknown_lbl     — shows unrecognised actions and unknown_lines
     """
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
+        self.setObjectName("PreviewPanel")
         self.setMinimumWidth(180)
         self._setup_ui()
         self.show_empty()
@@ -175,25 +199,36 @@ class PreviewPanel(QWidget):
         root.setContentsMargins(8, 8, 8, 8)
         root.setSpacing(6)
 
-        # Panel title
-        title_lbl = QLabel("預覽")
-        title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_lbl.setStyleSheet(
-            "font-weight: bold; color: #888; font-size: 11px;"
-            "border-bottom: 1px solid #444; padding-bottom: 4px;"
-        )
-        root.addWidget(title_lbl)
+        # ── Header ──────────────────────────────────────────────────────
+        header = QWidget()
+        header.setObjectName("PreviewHeader")
+        hdr_layout = QHBoxLayout(header)
+        hdr_layout.setContentsMargins(0, 0, 0, 4)
+        hdr_layout.setSpacing(0)
 
-        # Show / Hide indicator
+        title_lbl = QLabel("即時預覽")
+        title_lbl.setObjectName("PreviewTitle")
+        title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hdr_layout.addWidget(title_lbl, stretch=1)
+        root.addWidget(header)
+
+        # ── Action badge ─────────────────────────────────────────────────
         self._action_label = QLabel()
+        self._action_label.setObjectName("PreviewActionBadge")
         self._action_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._action_label.setStyleSheet("font-size: 11px;")
         root.addWidget(self._action_label)
 
-        # Item drop-label frame (centered)
+        # ── Disabled banner ───────────────────────────────────────────────
+        self._disabled_banner = QLabel("◆  此規則已停用（Disabled）")
+        self._disabled_banner.setObjectName("PreviewDisabledBanner")
+        self._disabled_banner.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        root.addWidget(self._disabled_banner)
+
+        # ── Item drop label (centered) ────────────────────────────────────
         item_outer = QHBoxLayout()
         item_outer.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         self._item_label = QLabel()
+        self._item_label.setObjectName("PreviewItemLabel")
         self._item_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._item_label.setWordWrap(False)
         self._item_label.setSizePolicy(
@@ -202,8 +237,16 @@ class PreviewPanel(QWidget):
         item_outer.addWidget(self._item_label)
         root.addLayout(item_outer)
 
-        # Info badges (MinimapIcon / PlayEffect / Sound)
+        # ── Condition summary ─────────────────────────────────────────────
+        self._condition_lbl = QLabel()
+        self._condition_lbl.setObjectName("PreviewConditionLabel")
+        self._condition_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._condition_lbl.setWordWrap(True)
+        root.addWidget(self._condition_lbl)
+
+        # ── Info badges (MinimapIcon / PlayEffect / Sound) ────────────────
         badge_frame = QFrame()
+        badge_frame.setObjectName("PreviewBadgeFrame")
         badge_frame.setFrameShape(QFrame.Shape.NoFrame)
         badge_layout = QVBoxLayout(badge_frame)
         badge_layout.setContentsMargins(2, 4, 2, 0)
@@ -216,27 +259,31 @@ class PreviewPanel(QWidget):
             badge_layout.addWidget(badge)
         root.addWidget(badge_frame)
 
+        # ── Unknown actions / lines ───────────────────────────────────────
+        self._unknown_lbl = QLabel()
+        self._unknown_lbl.setObjectName("PreviewUnknownLabel")
+        self._unknown_lbl.setWordWrap(True)
+        self._unknown_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        root.addWidget(self._unknown_lbl)
+
         root.addStretch()
 
-        # Empty-state placeholder
+        # ── Empty-state placeholder ───────────────────────────────────────
         self._empty_label = QLabel("（未選取規則）")
+        self._empty_label.setObjectName("PreviewEmptyLabel")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_label.setStyleSheet("color: #666; font-size: 11px;")
         root.addWidget(self._empty_label)
 
     @staticmethod
     def _make_badge() -> QLabel:
         lbl = QLabel()
+        lbl.setObjectName("PreviewBadge")
         lbl.setWordWrap(True)
-        lbl.setStyleSheet(
-            "color: #bbb; background: #252525; border-radius: 3px;"
-            "padding: 2px 6px; font-size: 10px;"
-        )
         lbl.hide()
         return lbl
 
     # ------------------------------------------------------------------
-    # Public API
+    # Public API (unchanged signatures)
     # ------------------------------------------------------------------
 
     def show_rule(self, rule: "FilterRule") -> None:
@@ -246,7 +293,7 @@ class PreviewPanel(QWidget):
             return
         try:
             style = parse_rule_style(rule)
-            self._render(style)
+            self._render(style, rule)
         except Exception:
             self.show_empty()
 
@@ -257,41 +304,70 @@ class PreviewPanel(QWidget):
         self._minimap_badge.hide()
         self._effect_badge.hide()
         self._sound_badge.hide()
+        self._disabled_banner.hide()
+        self._condition_lbl.hide()
+        self._unknown_lbl.hide()
         self._empty_label.show()
 
     # ------------------------------------------------------------------
     # Rendering
     # ------------------------------------------------------------------
 
-    def _render(self, style: PreviewStyle) -> None:
+    def _render(self, style: PreviewStyle, rule: "FilterRule | None" = None) -> None:
         self._empty_label.hide()
 
-        # ── Action indicator ───────────────────────────────────────────
-        if style.item_action == "Hide":
-            self._action_label.setText("◀  Hide（隱藏）")
-            self._action_label.setStyleSheet("font-size: 11px; color: #999;")
-        elif style.item_action == "Minimal":
-            self._action_label.setText("▷  Minimal（最小化）")
-            self._action_label.setStyleSheet("font-size: 11px; color: #aaa;")
-        elif style.item_action == "Continue":
-            self._action_label.setText("▶  Continue")
-            self._action_label.setStyleSheet("font-size: 11px; color: #aad4ff;")
+        # ── Disabled banner ────────────────────────────────────────────
+        is_disabled = rule is not None and not rule.enabled
+        if is_disabled:
+            self._disabled_banner.show()
         else:
-            self._action_label.setText("▶  Show")
-            self._action_label.setStyleSheet("font-size: 11px; color: #90ee90;")
+            self._disabled_banner.hide()
+
+        # ── Action badge ───────────────────────────────────────────────
+        if style.item_action == "Hide":
+            self._action_label.setText("▪ Hide（隱藏）")
+            self._action_label.setStyleSheet(
+                "font-size: 11px; color: #ff6b6b;"
+                "background: #2a1515; border-radius: 3px; padding: 2px 8px;"
+            )
+        elif style.item_action == "Minimal":
+            self._action_label.setText("▷ Minimal（最小化）")
+            self._action_label.setStyleSheet(
+                "font-size: 11px; color: #aaa;"
+                "background: #1e1e1e; border-radius: 3px; padding: 2px 8px;"
+            )
+        elif style.item_action == "Continue":
+            self._action_label.setText("▶ Continue（穿透）")
+            self._action_label.setStyleSheet(
+                "font-size: 11px; color: #74b9ff;"
+                "background: #0d1a2e; border-radius: 3px; padding: 2px 8px;"
+            )
+        else:
+            self._action_label.setText("▶ Show（顯示）")
+            self._action_label.setStyleSheet(
+                "font-size: 11px; color: #55efc4;"
+                "background: #0d2a1f; border-radius: 3px; padding: 2px 8px;"
+            )
         self._action_label.show()
 
         # ── Item drop label ────────────────────────────────────────────
         tc = style.text_color
         bc = style.background_color
         br = style.border_color
-        fs = max(9, min(36, style.font_size))  # clamp for Qt display
+        fs = max(9, min(36, style.font_size))   # clamp for Qt display
 
         is_hidden = (style.item_action == "Hide")
 
-        # Dim everything for hidden rules
-        alpha_factor = 0.35 if is_hidden else 1.0
-        def _dim(channel): return int(channel * alpha_factor)
+        # Dim hidden items; further dim disabled rules
+        if is_disabled:
+            alpha_factor = 0.45
+        elif is_hidden:
+            alpha_factor = 0.35
+        else:
+            alpha_factor = 1.0
+
+        def _dim(ch: int) -> int:
+            return int(ch * alpha_factor)
 
         tc_css = f"rgba({_dim(tc[0])},{_dim(tc[1])},{_dim(tc[2])},{_dim(tc[3])})"
         bc_css = f"rgba({_dim(bc[0])},{_dim(bc[1])},{_dim(bc[2])},{_dim(bc[3])})"
@@ -312,10 +388,47 @@ class PreviewPanel(QWidget):
         )
         self._item_label.show()
 
+        # ── Condition summary ──────────────────────────────────────────
+        if rule is not None:
+            parts: list[str] = []
+            cls_found = base_found = False
+            for k, v in rule.conditions:
+                if k == "Class" and not cls_found:
+                    parts.append(f"Class {v}")
+                    cls_found = True
+                elif k == "BaseType" and not base_found:
+                    parts.append(f"BaseType {v}")
+                    base_found = True
+            if parts:
+                self._condition_lbl.setText("  ·  ".join(parts))
+                self._condition_lbl.show()
+            else:
+                self._condition_lbl.hide()
+        else:
+            self._condition_lbl.hide()
+
         # ── Info badges ────────────────────────────────────────────────
-        self._set_badge(self._minimap_badge, style.minimap_icon, "🗺 小地圖圖示：")
-        self._set_badge(self._effect_badge,  style.play_effect,  "✦ 光柱效果：")
+        self._set_badge(self._minimap_badge, style.minimap_icon, "🗺 小地圖：")
+        self._set_badge(self._effect_badge,  style.play_effect,  "✦ 光柱：")
         self._set_badge(self._sound_badge,   style.alert_sound,  "🔔 ")
+
+        # ── Unknown actions + unknown_lines ────────────────────────────
+        if rule is not None:
+            unknown_actions = [
+                f"  {k} {v}"
+                for k, v in rule.actions
+                if k not in _KNOWN_ACTIONS
+            ]
+            unknown_lines = list(rule.unknown_lines or [])
+            all_unknown = unknown_actions + [f"  {l}" for l in unknown_lines]
+            if all_unknown:
+                header_txt = "其他指令："
+                self._unknown_lbl.setText(header_txt + "\n" + "\n".join(all_unknown))
+                self._unknown_lbl.show()
+            else:
+                self._unknown_lbl.hide()
+        else:
+            self._unknown_lbl.hide()
 
     @staticmethod
     def _set_badge(lbl: QLabel, value: str, prefix: str) -> None:
