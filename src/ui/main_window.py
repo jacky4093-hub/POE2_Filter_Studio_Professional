@@ -360,6 +360,8 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _on_undo(self):
+        # Commit any in-progress edit first so it appears as its own undo step.
+        self.rule_editor.flush_pending()
         last_cmd = self._doc.peek_undo_command()
         self._doc.undo()
         if isinstance(last_cmd, MoveRuleCommand) and not last_cmd.is_noop:
@@ -367,6 +369,8 @@ class MainWindow(QMainWindow):
         self._refresh_after_undo_redo()
 
     def _on_redo(self):
+        # Commit any in-progress edit first so the redo target is unambiguous.
+        self.rule_editor.flush_pending()
         last_cmd = self._doc.peek_redo_command()
         self._doc.redo()
         if isinstance(last_cmd, MoveRuleCommand) and not last_cmd.is_noop:
@@ -397,6 +401,10 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _on_rule_selected(self, real_index: int):
+        # Flush any pending debounced edit on the CURRENT rule before switching.
+        # Must come before _load_rule_to_ui() so _selected_index still points
+        # at the old rule when _on_rule_changed() executes.
+        self.rule_editor.flush_pending()
         self._load_rule_to_ui(real_index)
 
     def _on_rule_changed(self):
@@ -579,6 +587,10 @@ class MainWindow(QMainWindow):
         return reply == QMessageBox.StandardButton.Yes
 
     def closeEvent(self, event):
+        # Commit any pending debounced edit before checking dirty state.
+        # Without this, an in-progress edit would be silently lost because
+        # doc.dirty is still False until the timer fires.
+        self.rule_editor.flush_pending()
         if self._confirm_discard():
             self._save_workspace()
             event.accept()
