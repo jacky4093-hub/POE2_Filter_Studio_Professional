@@ -21,6 +21,7 @@ from core.categorizer import (
     count_by_category,
     total_visible_rules,
 )
+from assets.icon_registry import IconRegistry
 
 _CATEGORY_ROLE = Qt.ItemDataRole.UserRole + 10
 
@@ -66,11 +67,12 @@ class CategorySidebarWidget(QWidget):
     def _make_item(self, category: Category, count: int) -> QListWidgetItem:
         label = CATEGORY_LABELS[category]
         dot = CATEGORY_COLORS[category]
-        text = f"  ●  {label}" if category != Category.ALL else f"  ◈  {label}"
+        text = label if category != Category.ALL else label
         if count > 0 or category == Category.ALL:
             text = f"{text}   {count}"
 
         item = QListWidgetItem(text)
+        item.setIcon(IconRegistry.get_category_icon(category))
         item.setData(_CATEGORY_ROLE, category)
         item.setForeground(QColor(dot if category != Category.ALL else "#e2e8f0"))
         return item
@@ -84,12 +86,10 @@ class CategorySidebarWidget(QWidget):
             item = self._list.item(row)
             cat = item.data(_CATEGORY_ROLE)
             if cat == Category.ALL:
-                item.setText(f"  ◈  {CATEGORY_LABELS[Category.ALL]}   {total}")
+                item.setText(f"{CATEGORY_LABELS[Category.ALL]}   {total}")
             else:
                 n = counts.get(cat, 0)
-                item.setText(
-                    f"  ●  {CATEGORY_LABELS[cat]}   {n}"
-                )
+                item.setText(f"{CATEGORY_LABELS[cat]}   {n}")
 
     def set_active_category(self, category: Category, *, emit_signal: bool = False) -> None:
         self._active = category

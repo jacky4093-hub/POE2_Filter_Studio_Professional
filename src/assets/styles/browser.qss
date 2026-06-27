@@ -1,5 +1,5 @@
 /* ============================================================
-   Rule Card Browser — v3.1.0  (P13.5 Rule Actions Polish)
+   Rule Card Browser — v3.2.0  (P15.1 Icon System)
    Loaded automatically by bootstrap.apply_theme() alongside
    base.qss / shell.qss / sidebar.qss (alphabetical order).
    ============================================================ */
@@ -103,6 +103,14 @@ QPushButton#BtnDanger:disabled {
 #RuleCard[cardDisabled="true"] {
     background: #111520;
     border-color: #1a1f2e;
+}
+
+/* ── P15.1 action icon beside badge ── */
+
+#RuleCardActionIcon {
+    border: none;
+    background: transparent;
+    padding: 0;
 }
 
 /* ── Text elements inside each card ── */

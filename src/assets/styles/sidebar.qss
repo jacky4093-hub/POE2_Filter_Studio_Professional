@@ -1,4 +1,4 @@
-/* POE2 Filter Studio — v2.1.0 category sidebar */
+/* POE2 Filter Studio — v2.2.0 category sidebar (P15.1 icon system) */
 
 #CategorySidebar {
     background-color: #0B0F17;
@@ -25,7 +25,7 @@
 
 #CategorySidebarList::item {
     color: #94a3b8;
-    padding: 8px 10px;
+    padding: 6px 10px;
     border-left: 3px solid transparent;
     border-radius: 0;
 }

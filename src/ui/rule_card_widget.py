@@ -26,6 +26,7 @@ from PySide6.QtGui import QMouseEvent
 
 from core.models import FilterRule
 from core.categorizer import CATEGORY_LABELS, CATEGORY_COLORS, classify_rule
+from assets.icon_registry import IconRegistry
 
 
 _ACTION_COLORS: dict[str, str] = {
@@ -149,6 +150,15 @@ class RuleCardWidget(QFrame):
         num_lbl = QLabel(f"[{display_num}]")
         num_lbl.setObjectName("RuleCardNum")
         row.addWidget(num_lbl)
+
+        # Action icon (via IconRegistry — no hardcoded paths)
+        action_icon = IconRegistry.get_rule_action_icon(self._rule.action)
+        if not action_icon.isNull():
+            icon_lbl = QLabel()
+            icon_lbl.setObjectName("RuleCardActionIcon")
+            icon_lbl.setFixedSize(12, 12)
+            icon_lbl.setPixmap(action_icon.pixmap(12, 12))
+            row.addWidget(icon_lbl)
 
         # Action badge (background accent)
         action_text = self._rule.action if self._rule.action != "__TAIL__" else "—"

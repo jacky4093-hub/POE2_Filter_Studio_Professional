@@ -1,7 +1,7 @@
 import copy
-from collections import deque
 
 from core.models import FilterRule
+from core.undo_manager import UndoManager
 from parser.filter_parser import parse_filter
 from parser.filter_exporter import export_filter
 
@@ -17,16 +17,16 @@ class FilterDocument:
     update_rule) remain public so that Command objects can call them directly,
     but the UI layer must not call them anymore.
 
-    Undo / Redo stacks live here.  FilterDocument is intentionally NOT a
-    QObject — callers are responsible for refreshing the UI after undo/redo.
+    Undo / Redo stacks are delegated to UndoManager.
+    FilterDocument is intentionally NOT a QObject — callers are responsible
+    for refreshing the UI after undo/redo.
     """
 
     def __init__(self):
-        self._rules:      list[FilterRule] = []
-        self._file_path:  str  = ""
-        self._dirty:      bool = False
-        self._undo_stack: deque = deque(maxlen=_UNDO_LIMIT)
-        self._redo_stack: deque = deque(maxlen=_UNDO_LIMIT)
+        self._rules:     list[FilterRule] = []
+        self._file_path: str  = ""
+        self._dirty:     bool = False
+        self._undo_mgr:  UndoManager = UndoManager(_UNDO_LIMIT)
 
     # ------------------------------------------------------------------
     # Properties
@@ -56,8 +56,7 @@ class FilterDocument:
         self._rules = parse_filter(text)
         self._file_path = file_path
         self._dirty = False
-        self._undo_stack.clear()
-        self._redo_stack.clear()
+        self._undo_mgr.clear()
 
     def export_text(self) -> str:
         return export_filter(self._rules)
@@ -82,45 +81,36 @@ class FilterDocument:
     def execute(self, cmd) -> None:
         """Run *cmd*, push it onto the undo stack, clear the redo stack."""
         cmd.execute()
-        self._undo_stack.append(cmd)
-        self._redo_stack.clear()
+        self._undo_mgr.push(cmd)
         self._dirty = True
 
     def undo(self) -> None:
         """Pop the undo stack and reverse the last command."""
-        if not self._undo_stack:
-            return
-        cmd = self._undo_stack.pop()
-        cmd.undo()
-        self._redo_stack.append(cmd)
-        self._dirty = True
+        cmd = self._undo_mgr.undo()
+        if cmd is not None:
+            cmd.undo()
+            self._dirty = True
 
     def redo(self) -> None:
         """Pop the redo stack and re-apply the command."""
-        if not self._redo_stack:
-            return
-        cmd = self._redo_stack.pop()
-        cmd.redo()
-        self._undo_stack.append(cmd)
-        self._dirty = True
+        cmd = self._undo_mgr.redo()
+        if cmd is not None:
+            cmd.redo()
+            self._dirty = True
 
     def can_undo(self) -> bool:
-        return bool(self._undo_stack)
+        return self._undo_mgr.can_undo()
 
     def can_redo(self) -> bool:
-        return bool(self._redo_stack)
+        return self._undo_mgr.can_redo()
 
     def peek_undo_command(self):
-        """Return the command that would be undone next, or None.
-        Does not modify the stack.
-        """
-        return self._undo_stack[-1] if self._undo_stack else None
+        """Return the command that would be undone next, or None."""
+        return self._undo_mgr.peek_undo()
 
     def peek_redo_command(self):
-        """Return the command that would be redone next, or None.
-        Does not modify the stack.
-        """
-        return self._redo_stack[-1] if self._redo_stack else None
+        """Return the command that would be redone next, or None."""
+        return self._undo_mgr.peek_redo()
 
     # ------------------------------------------------------------------
     # Rule mutation primitives

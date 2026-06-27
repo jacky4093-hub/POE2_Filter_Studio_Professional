@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from core.models import FilterRule
+from assets.icon_registry import IconRegistry
 
 
 # Template catalogue — (display_name, prototype FilterRule)
@@ -70,7 +71,9 @@ class RuleCreationDialog(QDialog):
         self._list = QListWidget()
         self._list.setObjectName("RuleTemplateList")
         for name, _ in _TEMPLATES:
-            self._list.addItem(QListWidgetItem(name))
+            item = QListWidgetItem(name)
+            item.setIcon(IconRegistry.get_template_icon(name))
+            self._list.addItem(item)
         self._list.setCurrentRow(0)
         self._list.itemDoubleClicked.connect(self._on_confirm)
         root.addWidget(self._list)
