@@ -3,6 +3,7 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QApplication
 
+from app_info import APP_NAME, APP_VERSION
 from ui.main_window import MainWindow
 from services.settings_service import WorkspaceSettings
 
@@ -30,7 +31,8 @@ def apply_theme(app: QApplication) -> None:
 
 def main():
     app = QApplication(sys.argv)
-    app.setApplicationName("POE2 Filter Studio")
+    app.setApplicationName(APP_NAME)
+    app.setApplicationVersion(APP_VERSION)
     app.setOrganizationName("POE2FS")
 
     apply_theme(app)
