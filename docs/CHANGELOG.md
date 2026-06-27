@@ -4,6 +4,33 @@
 
 ---
 
+## [1.1.0] - 2026-06-27  Packaging & Distribution
+
+### 新增
+- `POE2FilterStudio.spec`：PyInstaller 打包設定（`--onedir`、無 UPX、相對路徑、排除未用 Qt 模組）
+- `version_info.txt`：Windows EXE 版本資訊（FileVersion、ProductName、CompanyName 等）
+- `build.bat`：一鍵建置腳本，含 pyinstaller 安裝檢查與錯誤提示
+- `release.bat`：一鍵打包 zip，輸出 `release\POE2FilterStudio_v{VERSION}_win64.zip`（約 45 MB）
+- `requirements.txt` 新增 `pyinstaller`
+- `.gitignore` 新增 `release/`、`build/POE2FilterStudio/`；保留 `POE2FilterStudio.spec`（`!POE2FilterStudio.spec` 例外規則）
+
+### 打包資訊
+- 輸出：`dist/POE2FilterStudio/POE2FilterStudio.exe`（總計約 116 MB，zip 壓縮後 45 MB）
+- PyInstaller 6.x 架構：主 EXE + `_internal/` 子目錄
+- WorkspaceSettings 路徑不受影響，仍儲存於 `%APPDATA%\POE2FS\POE2FilterStudio.ini`
+- Icon 暫用 PyInstaller 預設（v1.2.0 補加）
+
+---
+
+## [1.0.1] - 2026-06-27  Polish / Release Prep
+
+### 新增
+- `run.bat`：根目錄雙擊啟動腳本，含錯誤提示與安裝指令（`cd /d "%~dp0"` 確保路徑正確）
+- `README.md` 完整改寫：功能清單（v1.0.0）、快速啟動、版本進度表、技術架構
+- `docs/CHANGELOG.md` 完整改寫：v0.1.0 → v1.0.0 共 11 個版本紀錄
+
+---
+
 ## [1.0.0] - 2026-06-27  Filter Sections / Group Collapse
 
 ### 新增

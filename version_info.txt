@@ -1,0 +1,31 @@
+# UTF-8
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(1, 1, 0, 0),
+    prodvers=(1, 1, 0, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo(
+      [
+        StringTable(
+          u'040404b0',
+          [StringStruct(u'CompanyName', u'POE2FS'),
+           StringStruct(u'FileDescription', u'POE2 Filter Studio Professional'),
+           StringStruct(u'FileVersion', u'1.1.0.0'),
+           StringStruct(u'InternalName', u'POE2FilterStudio'),
+           StringStruct(u'LegalCopyright', u''),
+           StringStruct(u'OriginalFilename', u'POE2FilterStudio.exe'),
+           StringStruct(u'ProductName', u'POE2 Filter Studio'),
+           StringStruct(u'ProductVersion', u'1.1.0.0')]
+        )
+      ]
+    ),
+    VarFileInfo([VarStruct(u'Translation', [0x0404, 1200])])
+  ]
+)
