@@ -897,14 +897,29 @@ class MainWindow(QMainWindow):
         )
 
     def _confirm_discard(self) -> bool:
+        """Return True if it is safe to abandon the current document.
+
+        When the document is dirty, shows Save / Discard / Cancel:
+          Save    → calls save_file(); returns True only if save succeeded
+          Discard → returns True  (changes abandoned)
+          Cancel  → returns False (operation aborted)
+        """
         if not self._doc.dirty:
             return True
         reply = QMessageBox.question(
             self, "未儲存的修改",
-            "目前有未儲存的修改，確定要放棄並繼續嗎？",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            "目前有未儲存的修改，是否要儲存？",
+            QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Save,
         )
-        return reply == QMessageBox.StandardButton.Yes
+        if reply == QMessageBox.StandardButton.Save:
+            self.save_file()
+            return not self._doc.dirty   # False when user cancelled Save As
+        if reply == QMessageBox.StandardButton.Discard:
+            return True
+        return False   # Cancel
 
     def closeEvent(self, event):
         # Commit any pending debounced edit before checking dirty state.

@@ -150,7 +150,7 @@ class TestNewFile:
 
         monkeypatch.setattr(
             QMessageBox, "question",
-            lambda *a, **kw: QMessageBox.StandardButton.No,
+            lambda *a, **kw: QMessageBox.StandardButton.Cancel,
         )
         w.new_file()
         assert w._doc.dirty is True  # not reset
@@ -161,7 +161,7 @@ class TestNewFile:
         w._on_add_rule()
         monkeypatch.setattr(
             QMessageBox, "question",
-            lambda *a, **kw: QMessageBox.StandardButton.Yes,
+            lambda *a, **kw: QMessageBox.StandardButton.Discard,
         )
         w.new_file()
         assert w._doc.visible_count == 0
