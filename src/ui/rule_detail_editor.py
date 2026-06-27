@@ -107,6 +107,7 @@ def _alert_parse(text: str) -> tuple[int, int] | None:
     return sound_id, volume
 
 
+<<<<<<< HEAD
 def _effect_parse(text: str) -> tuple[str, bool] | None:
     """Parse PlayEffect text into (color, is_temp), or None if invalid."""
     parts = text.strip().split()
@@ -119,6 +120,8 @@ def _effect_parse(text: str) -> tuple[str, bool] | None:
     return color, is_temp
 
 
+=======
+>>>>>>> a369516fbd5790d22ece629acac71c8a0e2a7738
 # RGB triples for each POE2 minimap colour name
 _MM_PREVIEW_COLORS: dict[str, tuple[int, int, int]] = {
     "Red":    (220,  60,  60),

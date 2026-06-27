@@ -18,10 +18,14 @@ import pytest
 from PySide6.QtWidgets import QApplication
 
 from core.models import FilterRule
+<<<<<<< HEAD
 from ui.rule_detail_editor import (
     RuleDetailEditor, _MM_SHAPES, _MM_COLORS,
     _effect_parse,
 )
+=======
+from ui.rule_detail_editor import RuleDetailEditor, _MM_SHAPES, _MM_COLORS
+>>>>>>> a369516fbd5790d22ece629acac71c8a0e2a7738
 
 
 # ---------------------------------------------------------------------------
@@ -1846,6 +1850,7 @@ class TestP154MinimapPreviewColorsDict:
             assert len(rgb) == 3, f"{name}: expected (R,G,B)"
             for ch in rgb:
                 assert 0 <= ch <= 255, f"{name}: channel {ch} out of range"
+<<<<<<< HEAD
 
 
 # ===========================================================================
@@ -2112,3 +2117,5 @@ class TestP155PlayEffectSync:
         ed.rule_changed.connect(lambda i, r: emitted.append(r))
         ed._effect_color.setCurrentText("Green")
         assert len(emitted) >= 1
+=======
+>>>>>>> a369516fbd5790d22ece629acac71c8a0e2a7738
