@@ -127,7 +127,7 @@ class TestSetRule:
         ed = _make_editor(qapp)
         rule = _rule(actions=[["SetFontSize", "36"]])
         ed.set_rule(rule, index=0)
-        assert ed._fontsize_edit.text() == "36"
+        assert ed._fontsize_spin.value() == 36
 
     def test_settextcolor_populated(self, qapp):
         ed = _make_editor(qapp)
@@ -163,7 +163,7 @@ class TestSetRule:
         ed = _make_editor(qapp)
         ed.set_rule(_rule(), index=0)   # no conditions or actions
         assert ed._class_edit.text() == ""
-        assert ed._fontsize_edit.text() == ""
+        assert ed._fontsize_spin.value() == 0   # 0 = "—" (not set)
 
     def test_index_stored(self, qapp):
         ed = _make_editor(qapp)
@@ -634,3 +634,180 @@ class TestP131PreviewShowsUnknownLines:
         ed = _make_editor(qapp)
         ed.set_rule(rule, index=0)
         assert "CustomTag" in ed._preview_text.toPlainText()
+
+
+# ---------------------------------------------------------------------------
+# TestP134FontSpinbox  (P13.4 新增)
+# ---------------------------------------------------------------------------
+
+class TestP134FontSpinbox:
+    """SetFontSize is now a QSpinBox (range 0-60; 0 = not set → '—')."""
+
+    def test_fontsize_spinbox_exists(self, qapp):
+        from PySide6.QtWidgets import QSpinBox
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_fontsize_spin")
+        assert isinstance(ed._fontsize_spin, QSpinBox)
+
+    def test_set_rule_populates_fontsize_spin(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetFontSize", "36"]]), index=0)
+        assert ed._fontsize_spin.value() == 36
+
+    def test_missing_fontsize_spin_zero(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        assert ed._fontsize_spin.value() == 0
+
+    def test_set_rule_does_not_emit_on_fontsize(self, qapp):
+        ed = _make_editor(qapp)
+        received = _collect_signals(ed)
+        ed.set_rule(_rule(actions=[["SetFontSize", "45"]]), index=0)
+        assert received == []
+
+    def test_fontsize_change_emits_rule_changed(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetFontSize", "32"]]), index=0)
+        received = _collect_signals(ed)
+        ed._fontsize_spin.setValue(24)
+        assert len(received) == 1
+        _idx, updated = received[0]
+        fs_vals = [v for k, v in updated.actions if k == "SetFontSize"]
+        assert fs_vals == ["24"]
+
+    def test_fontsize_zero_removes_setfontsize(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetFontSize", "36"]]), index=0)
+        received = _collect_signals(ed)
+        ed._fontsize_spin.setValue(0)
+        assert len(received) == 1
+        _idx, updated = received[0]
+        fs_keys = [k for k, v in updated.actions if k == "SetFontSize"]
+        assert fs_keys == []
+
+    def test_fontsize_range_min_max(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._fontsize_spin.minimum() == 0
+        assert ed._fontsize_spin.maximum() == 60
+
+    def test_fontsize_special_value_text(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._fontsize_spin.specialValueText() == "—"
+
+
+# ---------------------------------------------------------------------------
+# TestP134ColorSwatches  (P13.4 新增)
+# ---------------------------------------------------------------------------
+
+class TestP134ColorSwatches:
+    """Colour fields carry swatch preview labels."""
+
+    def test_textcolor_swatch_exists(self, qapp):
+        from PySide6.QtWidgets import QLabel
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_textcolor_swatch")
+        assert isinstance(ed._textcolor_swatch, QLabel)
+
+    def test_bordercolor_swatch_exists(self, qapp):
+        from PySide6.QtWidgets import QLabel
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_bordercolor_swatch")
+        assert isinstance(ed._bordercolor_swatch, QLabel)
+
+    def test_bgcolor_swatch_exists(self, qapp):
+        from PySide6.QtWidgets import QLabel
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_bgcolor_swatch")
+        assert isinstance(ed._bgcolor_swatch, QLabel)
+
+    def test_valid_color_sets_rgba_style(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetTextColor", "255 0 0 255"]]), index=0)
+        style = ed._textcolor_swatch.styleSheet()
+        assert "255" in style
+        assert "transparent" not in style
+
+    def test_empty_color_shows_transparent(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        style = ed._textcolor_swatch.styleSheet()
+        assert "transparent" in style
+
+    def test_invalid_color_does_not_raise(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._textcolor_edit.setText("not_a_color")
+        ed._update_color_swatches()   # must not raise
+
+    def test_invalid_color_swatch_uses_dashed_border(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._textcolor_edit.setText("not_a_color")
+        ed._update_color_swatches()
+        style = ed._textcolor_swatch.styleSheet()
+        assert "dashed" in style
+
+    def test_update_color_swatches_updates_all_three(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(
+            _rule(actions=[
+                ["SetTextColor", "255 0 0 255"],
+                ["SetBorderColor", "0 255 0 255"],
+                ["SetBackgroundColor", "0 0 255 255"],
+            ]),
+            index=0,
+        )
+        for swatch in (
+            ed._textcolor_swatch, ed._bordercolor_swatch, ed._bgcolor_swatch
+        ):
+            assert "transparent" not in swatch.styleSheet()
+
+    def test_bgcolor_swatch_object_name(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._bgcolor_swatch.objectName() == "ColorSwatch"
+
+
+# ---------------------------------------------------------------------------
+# TestP134Hints  (P13.4 新增)
+# ---------------------------------------------------------------------------
+
+class TestP134Hints:
+    """PlayAlertSound and MinimapIcon rows have a one-line format hint."""
+
+    def test_alert_hint_exists(self, qapp):
+        from PySide6.QtWidgets import QLabel
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_alert_hint")
+        assert isinstance(ed._alert_hint, QLabel)
+
+    def test_minimap_hint_exists(self, qapp):
+        from PySide6.QtWidgets import QLabel
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_minimap_hint")
+        assert isinstance(ed._minimap_hint, QLabel)
+
+    def test_alert_hint_mentions_format(self, qapp):
+        ed = _make_editor(qapp)
+        text = ed._alert_hint.text()
+        assert "格式" in text or "例" in text
+
+    def test_minimap_hint_mentions_format(self, qapp):
+        ed = _make_editor(qapp)
+        text = ed._minimap_hint.text()
+        assert "格式" in text or "例" in text
+
+    def test_alert_hint_mentions_example(self, qapp):
+        ed = _make_editor(qapp)
+        assert "1 300" in ed._alert_hint.text()
+
+    def test_minimap_hint_mentions_example(self, qapp):
+        ed = _make_editor(qapp)
+        assert "Red Circle" in ed._minimap_hint.text() or "Circle" in ed._minimap_hint.text()
+
+    def test_alert_hint_object_name(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._alert_hint.objectName() == "RuleDetailHintLabel"
+
+    def test_minimap_hint_object_name(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._minimap_hint.objectName() == "RuleDetailHintLabel"

@@ -677,3 +677,254 @@ class TestSearchFilter:
         assert b._search_options == opts
         b.clear_search_filter()
         assert b._search_options == {}
+
+
+# ---------------------------------------------------------------------------
+# TestP135ButtonStates  (P13.5 新增)
+# ---------------------------------------------------------------------------
+
+class TestP135ButtonStates:
+    """Action buttons are enabled / disabled based on selection and position."""
+
+    # ── No selection ─────────────────────────────────────────────
+
+    def test_no_selection_add_always_enabled(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _tail()])
+        assert b._btn_add.isEnabled()
+
+    def test_no_selection_del_disabled(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _tail()])
+        assert not b._btn_del.isEnabled()
+
+    def test_no_selection_copy_disabled(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _tail()])
+        assert not b._btn_copy.isEnabled()
+
+    def test_no_selection_up_disabled(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _tail()])
+        assert not b._btn_up.isEnabled()
+
+    def test_no_selection_down_disabled(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _tail()])
+        assert not b._btn_dn.isEnabled()
+
+    def test_empty_browser_all_move_disabled(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([])
+        assert not b._btn_del.isEnabled()
+        assert not b._btn_copy.isEnabled()
+        assert not b._btn_up.isEnabled()
+        assert not b._btn_dn.isEnabled()
+
+    # ── Selection enables del / copy ─────────────────────────────
+
+    def test_selection_enables_del(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _tail()])
+        b.select_real_index(0)
+        assert b._btn_del.isEnabled()
+
+    def test_selection_enables_copy(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _tail()])
+        b.select_real_index(0)
+        assert b._btn_copy.isEnabled()
+
+    # ── First item ───────────────────────────────────────────────
+
+    def test_first_item_up_disabled(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _tail()])
+        b.select_real_index(0)
+        assert not b._btn_up.isEnabled()
+
+    def test_first_item_down_enabled(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _tail()])
+        b.select_real_index(0)
+        assert b._btn_dn.isEnabled()
+
+    # ── Last item ────────────────────────────────────────────────
+
+    def test_last_item_down_disabled(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _tail()])
+        b.select_real_index(1)   # real_index 1 is the last non-tail
+        assert not b._btn_dn.isEnabled()
+
+    def test_last_item_up_enabled(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _tail()])
+        b.select_real_index(1)
+        assert b._btn_up.isEnabled()
+
+    # ── Single rule ──────────────────────────────────────────────
+
+    def test_single_item_up_disabled(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _tail()])
+        b.select_real_index(0)
+        assert not b._btn_up.isEnabled()
+
+    def test_single_item_down_disabled(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _tail()])
+        b.select_real_index(0)
+        assert not b._btn_dn.isEnabled()
+
+    # ── Middle item ──────────────────────────────────────────────
+
+    def test_middle_item_both_move_enabled(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _rule(), _tail()])
+        b.select_real_index(1)   # middle
+        assert b._btn_up.isEnabled()
+        assert b._btn_dn.isEnabled()
+
+    # ── Update via _on_card_clicked ───────────────────────────────
+
+    def test_card_click_updates_button_states(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _tail()])
+        # Click first card
+        b._on_card_clicked(0)
+        assert not b._btn_up.isEnabled()
+        # Click second card
+        b._on_card_clicked(1)
+        assert b._btn_up.isEnabled()
+        assert not b._btn_dn.isEnabled()
+
+    # ── Manual _update_button_states ──────────────────────────────
+
+    def test_manual_deselect_disables_all(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _tail()])
+        b.select_real_index(0)
+        b._selected_real = -1
+        b._update_button_states()
+        assert not b._btn_del.isEnabled()
+        assert not b._btn_copy.isEnabled()
+        assert not b._btn_up.isEnabled()
+        assert not b._btn_dn.isEnabled()
+
+
+# ---------------------------------------------------------------------------
+# TestP135Tooltips  (P13.5 新增)
+# ---------------------------------------------------------------------------
+
+class TestP135Tooltips:
+    """Every action button has a non-empty Chinese tooltip."""
+
+    def test_add_button_has_tooltip(self, qapp):
+        b = RuleCardBrowser()
+        assert b._btn_add.toolTip() != ""
+
+    def test_del_button_has_tooltip(self, qapp):
+        b = RuleCardBrowser()
+        assert b._btn_del.toolTip() != ""
+
+    def test_copy_button_has_tooltip(self, qapp):
+        b = RuleCardBrowser()
+        assert b._btn_copy.toolTip() != ""
+
+    def test_up_button_has_tooltip(self, qapp):
+        b = RuleCardBrowser()
+        assert b._btn_up.toolTip() != ""
+
+    def test_down_button_has_tooltip(self, qapp):
+        b = RuleCardBrowser()
+        assert b._btn_dn.toolTip() != ""
+
+    def test_del_tooltip_mentions_delete(self, qapp):
+        b = RuleCardBrowser()
+        assert "刪除" in b._btn_del.toolTip()
+
+    def test_up_tooltip_mentions_move(self, qapp):
+        b = RuleCardBrowser()
+        assert "上移" in b._btn_up.toolTip() or "移" in b._btn_up.toolTip()
+
+    def test_down_tooltip_mentions_move(self, qapp):
+        b = RuleCardBrowser()
+        assert "下移" in b._btn_dn.toolTip() or "移" in b._btn_dn.toolTip()
+
+
+# ---------------------------------------------------------------------------
+# TestP135DangerMarker  (P13.5 新增)
+# ---------------------------------------------------------------------------
+
+class TestP135DangerMarker:
+    """Delete button is marked as danger; other buttons are not."""
+
+    def test_del_button_object_name_is_BtnDanger(self, qapp):
+        b = RuleCardBrowser()
+        assert b._btn_del.objectName() == "BtnDanger"
+
+    def test_add_button_not_danger(self, qapp):
+        b = RuleCardBrowser()
+        assert b._btn_add.objectName() != "BtnDanger"
+
+    def test_copy_button_not_danger(self, qapp):
+        b = RuleCardBrowser()
+        assert b._btn_copy.objectName() != "BtnDanger"
+
+    def test_up_button_not_danger(self, qapp):
+        b = RuleCardBrowser()
+        assert b._btn_up.objectName() != "BtnDanger"
+
+    def test_down_button_not_danger(self, qapp):
+        b = RuleCardBrowser()
+        assert b._btn_dn.objectName() != "BtnDanger"
+
+
+# ---------------------------------------------------------------------------
+# TestP135MoveSignal  (P13.5 新增)
+# ---------------------------------------------------------------------------
+
+class TestP135MoveSignal:
+    """Move buttons emit move_rule_requested with correct (from, to) indices."""
+
+    def test_up_emits_move_rule_requested(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _tail()])
+        received: list[tuple] = []
+        b.move_rule_requested.connect(lambda fr, to: received.append((fr, to)))
+        b.select_real_index(1)
+        b._on_move_up()
+        assert received == [(1, 0)]
+
+    def test_down_emits_move_rule_requested(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _tail()])
+        received: list[tuple] = []
+        b.move_rule_requested.connect(lambda fr, to: received.append((fr, to)))
+        b.select_real_index(0)
+        b._on_move_down()
+        assert received == [(0, 1)]
+
+    def test_up_at_first_does_not_emit(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _tail()])
+        received: list[tuple] = []
+        b.move_rule_requested.connect(lambda fr, to: received.append((fr, to)))
+        b.select_real_index(0)
+        b._on_move_up()   # already at first — should not emit
+        assert received == []
+
+    def test_down_at_last_does_not_emit(self, qapp):
+        b = RuleCardBrowser()
+        b.load_rules([_rule(), _rule(), _tail()])
+        received: list[tuple] = []
+        b.move_rule_requested.connect(lambda fr, to: received.append((fr, to)))
+        b.select_real_index(1)
+        b._on_move_down()  # already at last — should not emit
+        assert received == []
+
+    def test_move_buttons_exist(self, qapp):
+        b = RuleCardBrowser()
+        assert hasattr(b, "_btn_up")
+        assert hasattr(b, "_btn_dn")

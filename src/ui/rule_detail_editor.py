@@ -1,4 +1,4 @@
-"""RuleDetailEditor — v3.0.0  (P13.1 Visual Rule Editor MVP)
+"""RuleDetailEditor — v4.0.0  (P13.4 Editor Input Polish)
 
 Design contract (unchanged from v2.3.0):
   - set_rule(rule, index) populates all fields WITHOUT emitting rule_changed.
@@ -13,8 +13,13 @@ P13.1 visual improvements:
   - Sections wrapped in QGroupBox cards instead of plain headers.
   - Richer empty-state placeholder with icon + hint text.
   - Preview section inside its own card with monospace display.
-  - All private widget attributes keep their original names so existing
-    tests continue to pass without changes.
+
+P13.4 input polish:
+  - SetFontSize replaced with QSpinBox (range 0–60; 0 = not set → "—").
+  - Colour fields (SetTextColor / SetBorderColor / SetBackgroundColor) retain
+    text input but gain a live colour-swatch preview label beside them.
+    Invalid colour strings show a dashed-red swatch; empty → transparent.
+  - PlayAlertSound and MinimapIcon fields show a one-line format hint.
 """
 
 from __future__ import annotations
@@ -24,7 +29,7 @@ import copy
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QFormLayout,
     QGroupBox, QLabel, QCheckBox, QComboBox, QLineEdit, QPlainTextEdit,
-    QStackedWidget,
+    QSpinBox, QStackedWidget,
 )
 from PySide6.QtCore import Signal, Qt
 
@@ -209,35 +214,58 @@ class RuleDetailEditor(QWidget):
         self._class_edit.editingFinished.connect(self._on_any_field_changed)
         self._basetype_edit.editingFinished.connect(self._on_any_field_changed)
 
+    def _make_color_row(self, obj_name: str, placeholder: str) -> tuple:
+        """Return (container_widget, QLineEdit, swatch_QLabel) for a colour field."""
+        container = QWidget()
+        hlayout = QHBoxLayout(container)
+        hlayout.setContentsMargins(0, 0, 0, 0)
+        hlayout.setSpacing(4)
+
+        edit = QLineEdit()
+        edit.setObjectName(obj_name)
+        edit.setPlaceholderText(placeholder)
+        hlayout.addWidget(edit, stretch=1)
+
+        swatch = QLabel()
+        swatch.setObjectName("ColorSwatch")
+        swatch.setFixedSize(20, 18)
+        swatch.setToolTip("色彩預覽")
+        self._update_one_swatch(swatch, "")
+        hlayout.addWidget(swatch)
+
+        return container, edit, swatch
+
     def _build_appearance_card(self, vlayout: QVBoxLayout) -> None:
         box, form = self._make_card("外觀")
 
-        self._fontsize_edit = QLineEdit()
-        self._fontsize_edit.setObjectName("RuleDetailFontSize")
-        self._fontsize_edit.setPlaceholderText("36")
-        form.addRow("SetFontSize", self._fontsize_edit)
+        # SetFontSize → QSpinBox (0 = "—" / not set)
+        self._fontsize_spin = QSpinBox()
+        self._fontsize_spin.setObjectName("RuleDetailFontSize")
+        self._fontsize_spin.setRange(0, 60)
+        self._fontsize_spin.setSpecialValueText("—")
+        form.addRow("SetFontSize", self._fontsize_spin)
 
-        self._textcolor_edit = QLineEdit()
-        self._textcolor_edit.setObjectName("RuleDetailTextColor")
-        self._textcolor_edit.setPlaceholderText("255 200 0 255")
-        form.addRow("SetTextColor", self._textcolor_edit)
+        # Colour fields: QLineEdit + live swatch
+        tc_row, self._textcolor_edit, self._textcolor_swatch = self._make_color_row(
+            "RuleDetailTextColor", "255 200 0 255"
+        )
+        form.addRow("SetTextColor", tc_row)
 
-        self._bordercolor_edit = QLineEdit()
-        self._bordercolor_edit.setObjectName("RuleDetailBorderColor")
-        self._bordercolor_edit.setPlaceholderText("0 0 0 0")
-        form.addRow("SetBorderColor", self._bordercolor_edit)
+        bc_row, self._bordercolor_edit, self._bordercolor_swatch = self._make_color_row(
+            "RuleDetailBorderColor", "0 0 0 0"
+        )
+        form.addRow("SetBorderColor", bc_row)
 
-        self._bgcolor_edit = QLineEdit()
-        self._bgcolor_edit.setObjectName("RuleDetailBgColor")
-        self._bgcolor_edit.setPlaceholderText("0 0 0 180")
-        form.addRow("SetBackgroundColor", self._bgcolor_edit)
+        bg_row, self._bgcolor_edit, self._bgcolor_swatch = self._make_color_row(
+            "RuleDetailBgColor", "0 0 0 180"
+        )
+        form.addRow("SetBackgroundColor", bg_row)
 
         vlayout.addWidget(box)
 
-        for edit in (
-            self._fontsize_edit, self._textcolor_edit,
-            self._bordercolor_edit, self._bgcolor_edit,
-        ):
+        self._fontsize_spin.valueChanged.connect(self._on_any_field_changed)
+        for edit in (self._textcolor_edit, self._bordercolor_edit, self._bgcolor_edit):
+            edit.textChanged.connect(self._update_color_swatches)
             edit.editingFinished.connect(self._on_any_field_changed)
 
     def _build_audio_card(self, vlayout: QVBoxLayout) -> None:
@@ -247,6 +275,10 @@ class RuleDetailEditor(QWidget):
         self._alert_edit.setObjectName("RuleDetailAlertSound")
         self._alert_edit.setPlaceholderText("1 300")
         form.addRow("PlayAlertSound", self._alert_edit)
+
+        self._alert_hint = QLabel("格式：音效ID 音量（例：1 300）")
+        self._alert_hint.setObjectName("RuleDetailHintLabel")
+        form.addRow("", self._alert_hint)
 
         vlayout.addWidget(box)
 
@@ -259,6 +291,10 @@ class RuleDetailEditor(QWidget):
         self._minimap_edit.setObjectName("RuleDetailMinimapIcon")
         self._minimap_edit.setPlaceholderText("1 Red Circle")
         form.addRow("MinimapIcon", self._minimap_edit)
+
+        self._minimap_hint = QLabel("格式：大小 顏色 形狀（例：1 Red Circle）")
+        self._minimap_hint.setObjectName("RuleDetailHintLabel")
+        form.addRow("", self._minimap_hint)
 
         vlayout.addWidget(box)
 
@@ -330,7 +366,12 @@ class RuleDetailEditor(QWidget):
         self._class_edit.setText(self._get_from_list(rule.conditions, "Class"))
         self._basetype_edit.setText(self._get_from_list(rule.conditions, "BaseType"))
 
-        self._fontsize_edit.setText(self._get_from_list(rule.actions, "SetFontSize"))
+        fs_raw = self._get_from_list(rule.actions, "SetFontSize")
+        try:
+            self._fontsize_spin.setValue(int(fs_raw.strip()) if fs_raw.strip() else 0)
+        except ValueError:
+            self._fontsize_spin.setValue(0)
+
         self._textcolor_edit.setText(self._get_from_list(rule.actions, "SetTextColor"))
         self._bordercolor_edit.setText(self._get_from_list(rule.actions, "SetBorderColor"))
         self._bgcolor_edit.setText(self._get_from_list(rule.actions, "SetBackgroundColor"))
@@ -356,9 +397,9 @@ class RuleDetailEditor(QWidget):
             rule.conditions, "BaseType", self._basetype_edit.text()
         )
 
-        rule.actions = self._update_in_list(
-            rule.actions, "SetFontSize", self._fontsize_edit.text()
-        )
+        fs_str = str(self._fontsize_spin.value()) if self._fontsize_spin.value() > 0 else ""
+        rule.actions = self._update_in_list(rule.actions, "SetFontSize", fs_str)
+
         rule.actions = self._update_in_list(
             rule.actions, "SetTextColor", self._textcolor_edit.text()
         )
@@ -376,6 +417,35 @@ class RuleDetailEditor(QWidget):
         )
 
         return rule
+
+    def _update_color_swatches(self) -> None:
+        """Refresh all three colour swatches from current field text."""
+        self._update_one_swatch(self._textcolor_swatch, self._textcolor_edit.text())
+        self._update_one_swatch(self._bordercolor_swatch, self._bordercolor_edit.text())
+        self._update_one_swatch(self._bgcolor_swatch, self._bgcolor_edit.text())
+
+    @staticmethod
+    def _update_one_swatch(swatch: QLabel, color_text: str) -> None:
+        """Parse 'R G B [A]' text and apply background colour to *swatch*."""
+        if not color_text.strip():
+            swatch.setStyleSheet(
+                "background: transparent; border: 1px solid #1e2435; border-radius: 2px;"
+            )
+            return
+        try:
+            vals = [max(0, min(255, int(p))) for p in color_text.strip().split()[:4]]
+            while len(vals) < 4:
+                vals.append(255)
+            r, g, b, a = vals
+            swatch.setStyleSheet(
+                f"background: rgba({r},{g},{b},{a});"
+                "border: 1px solid #334155; border-radius: 2px;"
+            )
+        except (ValueError, TypeError):
+            swatch.setStyleSheet(
+                "background: transparent;"
+                "border: 1px dashed #ef4444; border-radius: 2px;"
+            )
 
     def _update_preview(self) -> None:
         if self._rule is None:

@@ -1,4 +1,4 @@
-"""RuleCardBrowser — v2.3.0
+"""RuleCardBrowser — v3.0.0
 
 QScrollArea-based card list. Drop-in replacement for RuleListWidget:
   - Same public signals (except rule_selected renamed → selected_rule_changed)
@@ -12,11 +12,14 @@ P10 additions:
   - category filter and search filter combine with AND logic
   - matching cards get set_highlight("match"); cleared on empty query
 
+P13.5 (Rule Actions Polish):
+  - ↑ / ↓ move buttons (emit move_rule_requested)
+  - Button states auto-update on selection change / load
+  - Tooltips on every action button
+  - Delete button styled as danger (objectName "BtnDanger")
+
 Section collapse is not supported in the card view; get_section_states()
 always returns {} and apply_section_states() is a no-op.
-
-move_rule_requested is declared for API compatibility but not emitted in P3
-(no drag-and-drop UI yet).
 """
 
 from __future__ import annotations
@@ -73,21 +76,46 @@ class RuleCardBrowser(QWidget):
         root.setContentsMargins(4, 4, 4, 4)
         root.setSpacing(4)
 
-        # Action buttons row
+        # ── Action buttons ────────────────────────────────────────
         btn_row = QHBoxLayout()
+        btn_row.setSpacing(3)
+
         self._btn_add  = QPushButton("＋ 新增")
-        self._btn_del  = QPushButton("－ 刪除")
+        self._btn_add.setObjectName("BtnAdd")
+        self._btn_add.setToolTip("新增規則")
+
         self._btn_copy = QPushButton("複製")
-        for btn in (self._btn_add, self._btn_del, self._btn_copy):
+        self._btn_copy.setObjectName("BtnCopy")
+        self._btn_copy.setToolTip("複製目前規則")
+
+        self._btn_up   = QPushButton("↑")
+        self._btn_up.setObjectName("BtnMove")
+        self._btn_up.setToolTip("上移目前規則")
+
+        self._btn_dn   = QPushButton("↓")
+        self._btn_dn.setObjectName("BtnMove")
+        self._btn_dn.setToolTip("下移目前規則")
+
+        self._btn_del  = QPushButton("刪除")
+        self._btn_del.setObjectName("BtnDanger")
+        self._btn_del.setToolTip("刪除目前規則")
+
+        for btn in (self._btn_add, self._btn_copy,
+                    self._btn_up, self._btn_dn, self._btn_del):
             btn.setFixedHeight(26)
             btn_row.addWidget(btn)
+
         root.addLayout(btn_row)
 
         self._btn_add.clicked.connect(self._on_add)
         self._btn_del.clicked.connect(self._on_delete)
         self._btn_copy.clicked.connect(self._on_copy)
+        self._btn_up.clicked.connect(self._on_move_up)
+        self._btn_dn.clicked.connect(self._on_move_down)
 
-        # Scroll area
+        self._update_button_states()   # initial: no rule loaded
+
+        # ── Scroll area ───────────────────────────────────────────
         self._scroll = QScrollArea()
         self._scroll.setObjectName("RuleCardScrollArea")
         self._scroll.setWidgetResizable(True)
@@ -155,6 +183,8 @@ class RuleCardBrowser(QWidget):
         # Trailing spacer pushes cards to top
         self._list_layout.addStretch(1)
 
+        self._update_button_states()
+
     def select_real_index(self, real_index: int) -> None:
         """Programmatically select a card by real_index."""
         if self._selected_real in self._cards:
@@ -165,6 +195,7 @@ class RuleCardBrowser(QWidget):
         if card:
             card.set_selected(True)
             self._scroll.ensureWidgetVisible(card)
+        self._update_button_states()
 
     def set_highlights(self, matches: set[int], current: int = -1) -> None:
         """Partial update: only touch cards whose highlight status changed."""
@@ -350,6 +381,35 @@ class RuleCardBrowser(QWidget):
                 widget.deleteLater()
 
     # ------------------------------------------------------------------
+    # Button-state helpers
+    # ------------------------------------------------------------------
+
+    def _get_non_tail_count(self) -> int:
+        return sum(1 for r in self._rules if r.action != "__TAIL__")
+
+    def _last_moveable_index(self) -> int:
+        """Return real_index of the last non-tail rule, or -1."""
+        for i in range(len(self._rules) - 1, -1, -1):
+            if self._rules[i].action != "__TAIL__":
+                return i
+        return -1
+
+    def _update_button_states(self) -> None:
+        """Enable / disable action buttons based on current selection."""
+        has_sel = self._selected_real >= 0
+        self._btn_del.setEnabled(has_sel)
+        self._btn_copy.setEnabled(has_sel)
+
+        if not has_sel or self._get_non_tail_count() <= 1:
+            self._btn_up.setEnabled(False)
+            self._btn_dn.setEnabled(False)
+            return
+
+        last_idx = self._last_moveable_index()
+        self._btn_up.setEnabled(self._selected_real > 0)
+        self._btn_dn.setEnabled(self._selected_real < last_idx)
+
+    # ------------------------------------------------------------------
     # Slots
     # ------------------------------------------------------------------
 
@@ -363,6 +423,7 @@ class RuleCardBrowser(QWidget):
             card.set_selected(True)
 
         self.selected_rule_changed.emit(real_index)
+        self._update_button_states()
 
     def _on_add(self) -> None:
         self.add_rule_requested.emit()
@@ -374,3 +435,12 @@ class RuleCardBrowser(QWidget):
     def _on_copy(self) -> None:
         if self._selected_real >= 0:
             self.copy_rule_requested.emit(self._selected_real)
+
+    def _on_move_up(self) -> None:
+        if self._selected_real > 0:
+            self.move_rule_requested.emit(self._selected_real, self._selected_real - 1)
+
+    def _on_move_down(self) -> None:
+        last = self._last_moveable_index()
+        if self._selected_real >= 0 and self._selected_real < last:
+            self.move_rule_requested.emit(self._selected_real, self._selected_real + 1)
