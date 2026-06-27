@@ -164,7 +164,10 @@ class MainWindow(QMainWindow):
         v.addWidget(status_shell)
 
         self.rule_card_browser.selected_rule_changed.connect(self._on_rule_selected)
-        self.rule_card_browser.add_rule_requested.connect(self._on_add_rule)
+        # P14.1: wizard now handles all browser-originated adds via add_rule_from_wizard.
+        # add_rule_requested is still emitted by the browser (for notification) but not
+        # connected here — _on_add_rule_from_template handles insertion from the browser.
+        self.rule_card_browser.add_rule_from_wizard.connect(self._on_add_rule_from_template)
         self.rule_card_browser.delete_rule_requested.connect(self._on_delete_rule)
         self.rule_card_browser.copy_rule_requested.connect(self._on_copy_rule)
         self.rule_card_browser.move_rule_requested.connect(self._on_move_rule)
@@ -639,13 +642,20 @@ class MainWindow(QMainWindow):
         self.rule_card_browser.refresh()
 
     def _on_add_rule(self):
-        new_rule = FilterRule(action="Show", pre_lines=[""])
+        """Insert a blank rule (toolbar / keyboard shortcut path)."""
+        self._insert_new_rule(FilterRule(action="Show", pre_lines=[""]))
+
+    def _on_add_rule_from_template(self, rule: FilterRule) -> None:
+        """Insert a wizard-chosen template rule (browser add-button path)."""
+        self._insert_new_rule(rule)
+
+    def _insert_new_rule(self, rule: FilterRule) -> None:
         insert_at = (
             self._selected_index + 1
             if 0 <= self._selected_index < len(self._doc.rules)
             else self._doc.tail_insert_pos()
         )
-        cmd = AddRuleCommand(self._doc, insert_at, new_rule)
+        cmd = AddRuleCommand(self._doc, insert_at, rule)
         self._doc.execute(cmd)
 
         self._reload_rule_list()
