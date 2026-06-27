@@ -33,6 +33,7 @@ from ui.preview_panel import PreviewPanel
 from ui.category_sidebar import CategorySidebarWidget
 from presenters.status_presenter import StatusPresenter
 from controllers.recent_files_controller import RecentFilesController
+from controllers.navigation_search_controller import NavigationSearchController
 
 
 class MainWindow(QMainWindow):
@@ -51,8 +52,9 @@ class MainWindow(QMainWindow):
         self._section_map: SectionMap | None = None
         self._status_presenter = StatusPresenter()
         self._recent_files_controller = RecentFilesController(self, self._settings_mgr)
+        self._nav_search = NavigationSearchController()
 
-        # Search state
+        # Search state — kept in sync with _nav_search for backward compatibility
         self._search_results: list[int] = []
         self._search_cursor:  int       = -1
 
@@ -340,6 +342,7 @@ class MainWindow(QMainWindow):
         self._section_map = None
         self._selected_index = -1
         self._editing_snapshot = None
+        self._nav_search.reset()
         self._search_results = []
         self._search_cursor = -1
         self._active_category = Category.ALL
@@ -521,6 +524,7 @@ class MainWindow(QMainWindow):
         self.rule_card_browser.load_rules(self._doc.rules, self._section_map)
         self._clear_rule_ui()
         self.search_bar.clear()
+        self._nav_search.reset()
         self._search_results = []
         self._search_cursor  = -1
 
@@ -740,39 +744,45 @@ class MainWindow(QMainWindow):
             and classify_rule(self._doc.rules[i]) == self._active_category
         ]
 
+    def _sync_search_state(self) -> None:
+        """Keep _search_results/_search_cursor in sync with the controller."""
+        self._search_results = self._nav_search.results
+        self._search_cursor  = self._nav_search.cursor
+
     def _on_search_changed(self, text: str) -> None:
         if not text.strip():
-            self._search_results = []
-            self._search_cursor  = -1
+            self._nav_search.reset()
+            self._sync_search_state()
             self.rule_card_browser.clear_highlights()
             self.search_bar.clear_count()
             return
 
-        results = search_rules(self._doc.rules, SearchQuery(text=text))
-        results = self._filter_indices_by_category(results)
-        self._search_results = results
-        self._search_cursor  = 0
+        state = self._nav_search.run_search(
+            self._doc.rules, text, self._filter_indices_by_category
+        )
+        self._sync_search_state()
 
-        if not results:
+        if not state.has_results:
             self.rule_card_browser.set_highlights(set(), -1)
             self.search_bar.set_count(0, 0)
             return
 
-        current_real = results[0]
-        self.rule_card_browser.set_highlights(set(results), current_real)
-        self.search_bar.set_count(len(results), 1)
-        self._navigate_to(current_real)
+        self.rule_card_browser.set_highlights(set(state.results), state.current_real)
+        self.search_bar.set_count(state.total, state.position)
+        self._navigate_to(state.current_real)
 
     def _on_search_next(self) -> None:
-        if not self._search_results:
+        if not self._nav_search.has_results:
             return
-        self._search_cursor = (self._search_cursor + 1) % len(self._search_results)
+        self._nav_search.next()
+        self._sync_search_state()
         self._go_to_cursor()
 
     def _on_search_prev(self) -> None:
-        if not self._search_results:
+        if not self._nav_search.has_results:
             return
-        self._search_cursor = (self._search_cursor - 1) % len(self._search_results)
+        self._nav_search.prev()
+        self._sync_search_state()
         self._go_to_cursor()
 
     def _go_to_cursor(self) -> None:
@@ -784,32 +794,24 @@ class MainWindow(QMainWindow):
     def _refresh_search(self) -> None:
         text = self.search_bar.current_text()
         if not text.strip():
+            self._nav_search.reset()
+            self._sync_search_state()
             self.rule_card_browser.clear_highlights()
             self.search_bar.clear_count()
-            self._search_results = []
-            self._search_cursor  = -1
             return
 
-        results = search_rules(self._doc.rules, SearchQuery(text=text))
-        results = self._filter_indices_by_category(results)
-        old_real = (
-            self._search_results[self._search_cursor]
-            if 0 <= self._search_cursor < len(self._search_results) else -1
+        state = self._nav_search.refresh(
+            self._doc.rules, text, self._filter_indices_by_category
         )
-        self._search_results = results
+        self._sync_search_state()
 
-        if not results:
-            self._search_cursor = -1
+        if not state.has_results:
             self.rule_card_browser.set_highlights(set(), -1)
             self.search_bar.set_count(0, 0)
             return
 
-        self._search_cursor = (
-            results.index(old_real) if old_real in results else 0
-        )
-        current_real = results[self._search_cursor]
-        self.rule_card_browser.set_highlights(set(results), current_real)
-        self.search_bar.set_count(len(results), self._search_cursor + 1)
+        self.rule_card_browser.set_highlights(set(state.results), state.current_real)
+        self.search_bar.set_count(state.total, state.position)
 
     # ------------------------------------------------------------------
     # Helpers
