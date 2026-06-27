@@ -1,24 +1,25 @@
-"""RuleListWidget — v0.6.0
+"""RuleListWidget — v0.8.0
 
-Changes from v0.5.0:
-  - QListWidget replaced with _DraggableListWidget (private subclass)
-  - _DraggableListWidget intercepts drop events and emits move_requested(from_row, to_row)
-    WITHOUT calling super().dropEvent() — so QListWidget never directly reorders items
-  - RuleListWidget translates display rows → real indices and emits move_rule_requested
-  - True reorder happens only in FilterDocument via MoveRuleCommand
+Changes from v0.6.0:
+  - Added search-result highlight state (_highlight_indices, _current_highlight)
+  - refresh() applies background colours for matching / current items
+  - set_highlights(matches, current) / clear_highlights() — new public API
+  - foreground colours (Show=green, others=grey) are preserved independently
 
-Public API (unchanged):
+Public API (signals unchanged):
   Signals:
     rule_selected(int)           — real index
     add_rule_requested()
     delete_rule_requested(int)   — real index
     copy_rule_requested(int)     — real index
-    move_rule_requested(int,int) — from_real, to_real   ← NEW v0.6.0
+    move_rule_requested(int,int) — from_real, to_real
 
   Methods:
     load_rules(rules)
     refresh()
     select_real_index(real_index)
+    set_highlights(matches: set[int], current: int = -1)   ← NEW v0.8.0
+    clear_highlights()                                      ← NEW v0.8.0
 """
 
 from PySide6.QtWidgets import (
@@ -30,6 +31,14 @@ from PySide6.QtCore import Signal, Qt
 from PySide6.QtGui import QColor
 
 from core.models import FilterRule
+
+
+# ---------------------------------------------------------------------------
+# Highlight colours
+# ---------------------------------------------------------------------------
+
+_HIGHLIGHT_CURRENT = QColor("#5a4200")   # bright amber  — cursor match
+_HIGHLIGHT_OTHER   = QColor("#2d2000")   # dark amber     — other matches
 
 
 # ---------------------------------------------------------------------------
@@ -115,6 +124,9 @@ class RuleListWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._rules: list[FilterRule] = []
+        # Search highlight state — updated by set_highlights() / clear_highlights()
+        self._highlight_indices: set[int] = set()
+        self._current_highlight: int      = -1
         self._setup_ui()
 
     def _setup_ui(self):
@@ -161,18 +173,25 @@ class RuleListWidget(QWidget):
             label = self._make_label(display_num, rule)
             item  = QListWidgetItem(label)
             item.setData(Qt.ItemDataRole.UserRole, real_idx)
+
+            # Foreground: Show=green, others=grey (unchanged from v0.6.0)
             item.setForeground(
                 QColor("#90ee90") if rule.action == "Show" else QColor("#aaaaaa")
             )
+
+            # Background: search highlight (does NOT affect foreground colour)
+            if real_idx == self._current_highlight:
+                item.setBackground(_HIGHLIGHT_CURRENT)
+            elif real_idx in self._highlight_indices:
+                item.setBackground(_HIGHLIGHT_OTHER)
+
             self.list_widget.addItem(item)
             display_num += 1
 
         count = self.list_widget.count()
         if count > 0:
             target = max(0, min(current_row, count - 1))
-            # Keep signals blocked so that restoring the selection programmatically
-            # does NOT fire rule_selected — callers are responsible for reloading
-            # the editor when they need it.
+            # Restore selection with signals blocked — callers own navigation
             self.list_widget.setCurrentRow(target)
 
         self.list_widget.blockSignals(False)
@@ -186,6 +205,23 @@ class RuleListWidget(QWidget):
                 self.list_widget.setCurrentRow(row)
                 self.list_widget.blockSignals(False)
                 return
+
+    def set_highlights(self, matches: set[int], current: int = -1) -> None:
+        """Apply search-result highlights and rebuild the list.
+
+        Args:
+            matches: set of real_indices to highlight (all matching rules)
+            current: real_index of the currently focused match (-1 = none)
+        """
+        self._highlight_indices = matches
+        self._current_highlight = current
+        self.refresh()
+
+    def clear_highlights(self) -> None:
+        """Remove all search highlighting and rebuild the list."""
+        self._highlight_indices = set()
+        self._current_highlight = -1
+        self.refresh()
 
     # ------------------------------------------------------------------
     # Helpers
