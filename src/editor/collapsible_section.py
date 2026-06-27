@@ -47,11 +47,7 @@ class CollapsibleSection(QWidget):
         self._header.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
-        self._header.setStyleSheet(
-            "QToolButton { text-align: left; padding: 4px 6px;"
-            "border: none; border-bottom: 1px solid #555; font-weight: bold; }"
-            "QToolButton:hover { background: #3a3a3a; }"
-        )
+        self._header.setObjectName("CollapsibleSectionHeader")
         self._header.toggled.connect(self._on_toggle)
         self._update_header()
         outer.addWidget(self._header)

@@ -58,15 +58,45 @@ class MainWindow(QMainWindow):
 
     def _build_ui(self):
         central = QWidget()
+        central.setObjectName("ContentShell")
         self.setCentralWidget(central)
         v = QVBoxLayout(central)
         v.setContentsMargins(4, 4, 4, 2)
         v.setSpacing(2)
 
+        # v2 shell — NavBar placeholder (brand + existing search bar)
+        nav_bar = QWidget()
+        nav_bar.setObjectName("NavBarPlaceholder")
+        nav_layout = QHBoxLayout(nav_bar)
+        nav_layout.setContentsMargins(8, 4, 8, 4)
+        nav_layout.setSpacing(12)
+
+        brand_lbl = QLabel("POE2 Filter Studio")
+        brand_lbl.setObjectName("NavBarBrand")
+        nav_layout.addWidget(brand_lbl)
+
         self.search_bar = SearchBar()
-        v.addWidget(self.search_bar)
+        nav_layout.addWidget(self.search_bar, stretch=1)
+
+        v.addWidget(nav_bar)
 
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
+
+        # v2 shell — Category sidebar placeholder (P2 will replace)
+        category_placeholder = QWidget()
+        category_placeholder.setObjectName("CategoryPlaceholder")
+        category_placeholder.setMinimumWidth(140)
+        category_placeholder.setMaximumWidth(200)
+        cat_layout = QVBoxLayout(category_placeholder)
+        cat_layout.setContentsMargins(8, 12, 8, 8)
+        cat_layout.setSpacing(6)
+        cat_title = QLabel("分類")
+        cat_title.setObjectName("CategoryPlaceholderTitle")
+        cat_hint = QLabel("（即將推出）")
+        cat_hint.setObjectName("CategoryPlaceholderHint")
+        cat_layout.addWidget(cat_title)
+        cat_layout.addWidget(cat_hint)
+        cat_layout.addStretch()
 
         self.rule_list = RuleListWidget()
         self.rule_list.setMinimumWidth(200)
@@ -78,17 +108,26 @@ class MainWindow(QMainWindow):
         self.preview_panel.setMinimumWidth(180)
         self.preview_panel.setMaximumWidth(340)
 
+        self._splitter.addWidget(category_placeholder)
         self._splitter.addWidget(self.rule_list)
         self._splitter.addWidget(self.rule_editor)
         self._splitter.addWidget(self.preview_panel)
-        self._splitter.setStretchFactor(0, 1)
-        self._splitter.setStretchFactor(1, 3)
-        self._splitter.setStretchFactor(2, 1)
-        self._splitter.setSizes([240, 720, 260])
+        self._splitter.setStretchFactor(0, 0)
+        self._splitter.setStretchFactor(1, 1)
+        self._splitter.setStretchFactor(2, 3)
+        self._splitter.setStretchFactor(3, 1)
+        self._splitter.setSizes([160, 240, 560, 260])
         v.addWidget(self._splitter, stretch=1)
 
+        # v2 shell — bottom status placeholder (replaces QStatusBar content area)
+        status_shell = QWidget()
+        status_shell.setObjectName("StatusBarPlaceholder")
+        status_layout = QHBoxLayout(status_shell)
+        status_layout.setContentsMargins(8, 0, 8, 0)
         self._status_lbl = QLabel()
-        self.statusBar().addPermanentWidget(self._status_lbl)
+        status_layout.addWidget(self._status_lbl)
+        status_layout.addStretch()
+        v.addWidget(status_shell)
 
         self.rule_list.rule_selected.connect(self._on_rule_selected)
         self.rule_list.add_rule_requested.connect(self._on_add_rule)
@@ -574,7 +613,6 @@ class MainWindow(QMainWindow):
         dirty = " [已修改]" if self._doc.dirty else ""
         count = self._doc.visible_count
         self._status_lbl.setText(f"{name}{dirty}  ·  {count} 條規則")
-        self.statusBar().showMessage(self._doc.file_path or "就緒")
 
     def _confirm_discard(self) -> bool:
         if not self._doc.dirty:

@@ -1,0 +1,259 @@
+/* POE2 Filter Studio — v2.0.0 global dark theme */
+
+QWidget {
+    background-color: #111827;
+    color: #e2e8f0;
+    font-size: 13px;
+}
+
+QMainWindow {
+    background-color: #0B0F17;
+}
+
+QMenuBar {
+    background-color: #111827;
+    color: #e2e8f0;
+    border-bottom: 1px solid #263244;
+    padding: 2px 0;
+}
+
+QMenuBar::item {
+    background: transparent;
+    padding: 4px 10px;
+}
+
+QMenuBar::item:selected {
+    background-color: #1c2433;
+    border-radius: 4px;
+}
+
+QMenu {
+    background-color: #1c2433;
+    color: #e2e8f0;
+    border: 1px solid #263244;
+    padding: 4px 0;
+}
+
+QMenu::item {
+    padding: 6px 24px 6px 16px;
+}
+
+QMenu::item:selected {
+    background-color: #7C3AED;
+}
+
+QToolBar {
+    background-color: #111827;
+    border-bottom: 1px solid #263244;
+    spacing: 6px;
+    padding: 4px 8px;
+}
+
+QToolBar QToolButton,
+QToolBar QAction {
+    color: #e2e8f0;
+}
+
+QStatusBar {
+    background-color: #0B0F17;
+    color: #94a3b8;
+    border-top: 1px solid #263244;
+}
+
+QSplitter::handle {
+    background-color: #263244;
+    width: 2px;
+}
+
+QSplitter::handle:hover {
+    background-color: #7C3AED;
+}
+
+QScrollBar:vertical {
+    background: #111827;
+    width: 10px;
+    margin: 0;
+}
+
+QScrollBar::handle:vertical {
+    background: #263244;
+    min-height: 24px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #475569;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+QScrollBar:horizontal {
+    background: #111827;
+    height: 10px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #263244;
+    min-width: 24px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #475569;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    width: 0;
+}
+
+QGroupBox {
+    background-color: #1c2433;
+    border: 1px solid #263244;
+    border-radius: 6px;
+    margin-top: 10px;
+    padding: 8px 8px 8px 8px;
+    font-weight: bold;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 6px;
+    color: #94a3b8;
+}
+
+QLineEdit,
+QPlainTextEdit,
+QTextEdit,
+QSpinBox,
+QComboBox {
+    background-color: #0B0F17;
+    color: #e2e8f0;
+    border: 1px solid #263244;
+    border-radius: 4px;
+    padding: 4px 6px;
+    selection-background-color: #7C3AED;
+}
+
+QLineEdit:focus,
+QPlainTextEdit:focus,
+QTextEdit:focus,
+QSpinBox:focus,
+QComboBox:focus {
+    border-color: #7C3AED;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 20px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #1c2433;
+    color: #e2e8f0;
+    border: 1px solid #263244;
+    selection-background-color: #7C3AED;
+}
+
+QPushButton {
+    background-color: #1c2433;
+    color: #e2e8f0;
+    border: 1px solid #263244;
+    border-radius: 6px;
+    padding: 5px 12px;
+}
+
+QPushButton:hover {
+    background-color: #253350;
+    border-color: #475569;
+}
+
+QPushButton:pressed {
+    background-color: #7C3AED;
+    border-color: #7C3AED;
+}
+
+QPushButton:disabled {
+    color: #64748b;
+    background-color: #111827;
+}
+
+QTreeWidget,
+QListWidget,
+QListView,
+QTreeView {
+    background-color: #0B0F17;
+    color: #e2e8f0;
+    border: 1px solid #263244;
+    border-radius: 4px;
+    outline: none;
+}
+
+QTreeWidget::item,
+QListWidget::item {
+    padding: 3px 4px;
+}
+
+QTreeWidget::item:selected,
+QListWidget::item:selected {
+    background-color: #2d3f63;
+    color: #e2e8f0;
+}
+
+QTreeWidget::item:hover,
+QListWidget::item:hover {
+    background-color: #1e2a45;
+}
+
+QHeaderView::section {
+    background-color: #1c2433;
+    color: #94a3b8;
+    border: none;
+    border-bottom: 1px solid #263244;
+    padding: 4px 8px;
+}
+
+QToolTip {
+    background-color: #1c2433;
+    color: #e2e8f0;
+    border: 1px solid #263244;
+    padding: 4px 8px;
+}
+
+QMessageBox {
+    background-color: #111827;
+}
+
+QLabel {
+    background: transparent;
+    color: #e2e8f0;
+}
+
+QScrollArea {
+    background-color: transparent;
+    border: none;
+}
+
+/* CollapsibleSection header — styled via objectName */
+QToolButton#CollapsibleSectionHeader {
+    text-align: left;
+    padding: 6px 8px;
+    border: none;
+    border-bottom: 1px solid #263244;
+    font-weight: bold;
+    color: #e2e8f0;
+    background-color: #1c2433;
+    border-radius: 0;
+}
+
+QToolButton#CollapsibleSectionHeader:hover {
+    background-color: #253350;
+}
+
+QToolButton#CollapsibleSectionHeader:checked {
+    background-color: #1c2433;
+}

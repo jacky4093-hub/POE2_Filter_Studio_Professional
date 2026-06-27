@@ -1,0 +1,48 @@
+/* POE2 Filter Studio — v2.0.0 main window shell placeholders */
+
+#NavBarPlaceholder {
+    background-color: #111827;
+    border-bottom: 1px solid #263244;
+    min-height: 48px;
+    max-height: 48px;
+}
+
+#NavBarBrand {
+    color: #e2e8f0;
+    font-size: 15px;
+    font-weight: bold;
+    padding-left: 4px;
+}
+
+#CategoryPlaceholder {
+    background-color: #0B0F17;
+    border: 1px solid #263244;
+    border-radius: 4px;
+    color: #94a3b8;
+    padding: 12px 8px;
+}
+
+#CategoryPlaceholderTitle {
+    color: #e2e8f0;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+#CategoryPlaceholderHint {
+    color: #64748b;
+    font-size: 12px;
+}
+
+#StatusBarPlaceholder {
+    background-color: #0B0F17;
+    border-top: 1px solid #263244;
+    min-height: 24px;
+    max-height: 24px;
+    color: #94a3b8;
+    font-size: 12px;
+    padding: 2px 8px;
+}
+
+#ContentShell {
+    background-color: #0B0F17;
+}

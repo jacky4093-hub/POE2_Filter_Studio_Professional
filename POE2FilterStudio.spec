@@ -11,8 +11,9 @@ a = Analysis(
     pathex=['src'],
     binaries=[],
     datas=[
-        ('data',   'data'),    # items_zhTW.json, aliases.json
-        ('assets', 'assets'),  # icons, images, sounds (future use)
+        ('data',        'data'),    # items_zhTW.json, aliases.json
+        ('assets',      'assets'),  # root-level assets (future use)
+        ('src/assets',  'assets'),  # v2 theme QSS + icons
     ],
     hiddenimports=[
         'PySide6.QtCore',
