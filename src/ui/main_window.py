@@ -34,6 +34,7 @@ from ui.category_sidebar import CategorySidebarWidget
 from presenters.status_presenter import StatusPresenter
 from controllers.recent_files_controller import RecentFilesController
 from controllers.navigation_search_controller import NavigationSearchController
+from controllers.quick_filter_controller import QuickFilterController
 
 
 class MainWindow(QMainWindow):
@@ -65,6 +66,7 @@ class MainWindow(QMainWindow):
         self.resize(1250, 720)
 
         self._build_ui()
+        self._quick_filter = QuickFilterController(self)
         self._build_menus()
         self._build_toolbar()
         self._build_shortcuts()
@@ -463,27 +465,17 @@ class MainWindow(QMainWindow):
         self._update_filter_search_count()
 
     # ------------------------------------------------------------------
-    # P10: filter search bar handlers
+    # P10: filter search bar handlers (facade — delegate to QuickFilterController)
     # ------------------------------------------------------------------
 
     def _on_filter_search_changed(self, query: str, options: dict) -> None:
-        self.rule_card_browser.set_search_filter(query, options)
-        self._update_filter_search_count()
-        # If the previously selected card was filtered out, clear the editor.
-        if (
-            self._selected_index >= 0
-            and not self.rule_card_browser.is_rule_visible(self._selected_index)
-        ):
-            self._clear_rule_ui()
+        self._quick_filter.apply_filter(query, options)
 
     def _on_filter_search_clear(self) -> None:
-        self.rule_card_browser.clear_search_filter()
-        self._update_filter_search_count()
+        self._quick_filter.clear_filter()
 
     def _update_filter_search_count(self) -> None:
-        visible = self.rule_card_browser.get_visible_count()
-        total   = self.rule_card_browser.get_total_count()
-        self.filter_search_bar.set_result_count(visible, total)
+        self._quick_filter.refresh_count()
 
     # ------------------------------------------------------------------
     # File operations
