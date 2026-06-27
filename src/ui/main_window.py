@@ -32,7 +32,8 @@ from ui.rule_detail_editor import RuleDetailEditor
 from ui.preview_panel import PreviewPanel
 from ui.category_sidebar import CategorySidebarWidget
 from ui.validation_panel import ValidationPanel
-from core.validator import validate_document
+from ui.save_warning_dialog import SaveWarningDialog
+from core.validator import validate_document, ValidationSeverity
 from presenters.status_presenter import StatusPresenter
 from controllers.recent_files_controller import RecentFilesController
 from controllers.navigation_search_controller import NavigationSearchController
@@ -559,7 +560,24 @@ class MainWindow(QMainWindow):
         if path:
             self._write_to(path)
 
+    def _check_save_issues(self) -> bool:
+        """Return True if it is safe to proceed with saving.
+
+        Runs validate_document; if any ERROR or WARNING issues are found,
+        shows SaveWarningDialog.  Returns False if the user cancels.
+        INFO issues are never shown and never block saving.
+        """
+        blocking = [
+            i for i in validate_document(self._doc)
+            if i.severity in (ValidationSeverity.ERROR, ValidationSeverity.WARNING)
+        ]
+        if not blocking:
+            return True
+        return SaveWarningDialog.confirm(blocking, self)
+
     def _write_to(self, path: str):
+        if not self._check_save_issues():
+            return
         try:
             text = self._file_mgr.serialize_rules(self._doc.rules)
             self._file_mgr.save_as(text, path)
