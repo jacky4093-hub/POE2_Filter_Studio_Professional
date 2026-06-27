@@ -245,6 +245,14 @@ QGroupBox#RuleEditorCard QSpinBox::down-button:hover {
     border-color: #3b82f6;
 }
 
+/* ── Minimap visual preview widget (P15.4) ── */
+
+#MinimapPreviewWidget {
+    border: 1px solid #1c2845;
+    border-radius: 4px;
+    background: #07090f;
+}
+
 /* ── Alert sound spinboxes (compact) ── */
 
 #AlertSoundIdSpin {

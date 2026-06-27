@@ -18,7 +18,7 @@ import pytest
 from PySide6.QtWidgets import QApplication
 
 from core.models import FilterRule
-from ui.rule_detail_editor import RuleDetailEditor
+from ui.rule_detail_editor import RuleDetailEditor, _MM_SHAPES, _MM_COLORS
 
 
 # ---------------------------------------------------------------------------
@@ -1651,3 +1651,195 @@ class TestP153SwatchStillClickable:
         )
         ed._on_swatch_clicked("SetBorderColor", ed._bordercolor_edit)
         assert calls == ["SetBorderColor"]
+
+
+# ===========================================================================
+# TestP154MinimapPreviewWidget  (P15.4 新增)
+# ===========================================================================
+
+class TestP154MinimapPreviewWidgetUnit:
+    """Unit tests for MinimapPreviewWidget — no editor required."""
+
+    def test_widget_objectname(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        assert w.objectName() == "MinimapPreviewWidget"
+
+    def test_widget_fixed_size(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        assert w.width()  == 54
+        assert w.height() == 54
+
+    def test_initial_state_is_empty(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        assert w._size  == ""
+        assert w._color == ""
+        assert w._shape == ""
+
+    def test_set_icon_stores_values(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        w.set_icon("1", "Red", "Circle")
+        assert w._size  == "1"
+        assert w._color == "Red"
+        assert w._shape == "Circle"
+
+    def test_clear_resets_values(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        w.set_icon("1", "Red", "Circle")
+        w.clear()
+        assert w._size  == ""
+        assert w._color == ""
+        assert w._shape == ""
+
+    def test_paintEvent_empty_does_not_raise(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        w.show()
+        w.repaint()
+        w.hide()
+
+    def test_paintEvent_with_icon_does_not_raise(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        w.set_icon("1", "Blue", "Diamond")
+        w.show()
+        w.repaint()
+        w.hide()
+
+    @pytest.mark.parametrize("shape", [
+        "circle", "square", "diamond", "triangle", "star", "cross",
+        "hexagon", "pentagon", "moon", "kite", "raindrop", "upsidedownhouse",
+        "unknown_shape",
+    ])
+    def test_all_shapes_paint_without_crash(self, qapp, shape):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        w.set_icon("1", "Green", shape.capitalize())
+        w.show()
+        w.repaint()
+        w.hide()
+
+    @pytest.mark.parametrize("color", [
+        "Red", "Green", "Blue", "Brown", "White", "Yellow",
+        "Cyan", "Grey", "Orange", "Pink", "Purple",
+    ])
+    def test_all_colors_paint_without_crash(self, qapp, color):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        w.set_icon("0", color, "Circle")
+        w.show()
+        w.repaint()
+        w.hide()
+
+    @pytest.mark.parametrize("size", ["0", "1", "2", "99"])
+    def test_all_sizes_paint_without_crash(self, qapp, size):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        w.set_icon(size, "Red", "Star")
+        w.show()
+        w.repaint()
+        w.hide()
+
+    def test_unknown_color_falls_back_gracefully(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        w = MinimapPreviewWidget()
+        w.set_icon("1", "NotAColor", "Circle")
+        w.show()
+        w.repaint()  # must not raise
+        w.hide()
+
+
+class TestP154MinimapPreviewOnEditor:
+    """Integration: MinimapPreviewWidget is wired into RuleDetailEditor."""
+
+    def test_preview_widget_exists_on_editor(self, qapp):
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_mm_preview")
+
+    def test_preview_widget_is_correct_type(self, qapp):
+        from ui.rule_detail_editor import MinimapPreviewWidget
+        ed = _make_editor(qapp)
+        assert isinstance(ed._mm_preview, MinimapPreviewWidget)
+
+    def test_set_rule_valid_minimap_updates_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        assert ed._mm_preview._size  == "1"
+        assert ed._mm_preview._color == "Red"
+        assert ed._mm_preview._shape == "Circle"
+
+    def test_set_rule_no_minimap_clears_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        assert ed._mm_preview._size == ""
+
+    def test_manual_valid_text_updates_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._minimap_edit.setText("0 Yellow Star")
+        assert ed._mm_preview._size  == "0"
+        assert ed._mm_preview._color == "Yellow"
+        assert ed._mm_preview._shape == "Star"
+
+    def test_manual_invalid_text_clears_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        ed._minimap_edit.setText("bad input")
+        assert ed._mm_preview._size == ""
+
+    def test_manual_empty_text_clears_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        ed._minimap_edit.setText("")
+        assert ed._mm_preview._size == ""
+
+    def test_combo_change_updates_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        ed._mm_color.setCurrentText("Blue")
+        assert ed._mm_preview._color == "Blue"
+
+    def test_combo_shape_change_updates_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        ed._mm_shape.setCurrentText("Star")
+        assert ed._mm_preview._shape == "Star"
+
+    def test_combo_size_change_updates_preview(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        ed._mm_size.setCurrentText("0")
+        assert ed._mm_preview._size == "0"
+
+    def test_invalid_text_does_not_raise(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._minimap_edit.setText("!!invalid!! text 999")
+        # Must not raise; preview in empty state
+        assert ed._mm_preview._size == ""
+
+    def test_preview_survives_all_known_shapes(self, qapp):
+        ed = _make_editor(qapp)
+        for shape in _MM_SHAPES:
+            ed._mm_preview.set_icon("1", "Red", shape)
+            ed._mm_preview.repaint()  # must not raise
+
+
+class TestP154MinimapPreviewColorsDict:
+    """_MM_PREVIEW_COLORS covers all POE2 colour names."""
+
+    def test_all_mm_colors_in_preview_map(self, qapp):
+        from ui.rule_detail_editor import _MM_PREVIEW_COLORS
+        for name in _MM_COLORS:
+            assert name in _MM_PREVIEW_COLORS, f"Missing: {name}"
+
+    def test_preview_color_tuples_are_valid_rgb(self, qapp):
+        from ui.rule_detail_editor import _MM_PREVIEW_COLORS
+        for name, rgb in _MM_PREVIEW_COLORS.items():
+            assert len(rgb) == 3, f"{name}: expected (R,G,B)"
+            for ch in rgb:
+                assert 0 <= ch <= 255, f"{name}: channel {ch} out of range"
