@@ -85,8 +85,12 @@ class TestLoadFileShowsEditor:
         w.load_file(str(p))
         assert w._main_stack.currentIndex() == 1
 
-    def test_load_invalid_file_stays_welcome(self, fresh):
+    def test_load_invalid_file_stays_welcome(self, fresh, monkeypatch):
         w, _ = fresh
+        monkeypatch.setattr(
+            QMessageBox, "critical",
+            staticmethod(lambda *a, **kw: None),
+        )
         w.load_file("/nonexistent/missing.filter")
         assert w._main_stack.currentIndex() == 0
 

@@ -30,9 +30,13 @@ GitHub Copilot
 
 ## Current Project Status
 
-P1 Complete
-P2 Complete
-P3 In Progress
+- Repository: jacky4093-hub/POE2_Filter_Studio_Professional
+- Latest commit: P10 Search & Quick Filter Complete
+- Completed phases: P1 through P10
+- Test status: 644 passed
+- GUI framework: PySide6 / Qt6 (do not use PyQt6)
 
-Current focus:
-Rule Card Browser
+## Current focus
+
+- Post-P10 documentation sync
+- Prepare P11 planning

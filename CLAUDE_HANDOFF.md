@@ -2,68 +2,36 @@
 
 ## Current Project
 
-POE2 Filter Studio v2 UI Redesign
+POE2 Filter Studio
 
-## Completed
+## Status Summary
 
-### P1 - Theme Shell
+- Repository: jacky4093-hub/POE2_Filter_Studio_Professional
+- Latest commit: P10 Search & Quick Filter Complete
+- Completed phases: P1 through P10
+- Test status: 644 passed
+- GUI framework: PySide6 / Qt6
+- Do not use PyQt6
 
-- Dark theme implemented
-- 4-column layout shell
-- Navigation placeholder
-- Category placeholder
-- Status placeholder
-- 134 tests passed
+## Current Focus
 
-### P2 - Category Sidebar
-
-- CategorySidebarWidget implemented
-- [categorizer.py](http://categorizer.py) implemented
-- 9 category filters
-- Search + category intersection support
-- 154 tests passed
+- Post-P10 documentation sync
+- Prepare P11 planning
 
 ## Important Constraints
 
-DO NOT MODIFY:
-
-- src/parser/filter_[parser.py](http://parser.py)
-- src/parser/filter_[exporter.py](http://exporter.py)
-- src/core/[document.py](http://document.py)
-- src/core/[commands.py](http://commands.py)
-- src/core/[search.py](http://search.py)
-- src/core/[sections.py](http://sections.py)
-- src/core/[models.py](http://models.py)
-
-Unless explicitly required.
-
-## Current Stage
-
-Ready for:
-
-P3 Rule Card Browser
-
-Requirements:
-
-- Use QListWidget + RuleCardWidget
-- Do NOT use Delegate
-- Preserve real_index mapping
-- Preserve undo/redo
-- Preserve search functionality
-- Preserve category filtering
-
-## Existing Documentation
-
-Read first:
-
-- docs/V2_IMPLEMENTATION_[PLAN.md](http://PLAN.md)
+- Keep the existing implementation intact.
+- Do not start P11 work.
+- Do not refactor main_window.py.
+- Do not modify src/ or tests/ unless explicitly requested.
+- Keep tests passing.
+- Avoid over-engineering.
 
 ## Required Process
 
-1. Read V2_IMPLEMENTATION_[PLAN.md](http://PLAN.md)
-2. Analyze current codebase
-3. Implement only P3
-4. Run pytest
-5. Fix failures until all tests pass
-6. Report modified files and risks
+1. Review the current documentation state.
+2. Update handoff notes to reflect completed work.
+3. Preserve the existing PySide6 / Qt6 architecture.
+4. Run pytest and compile checks.
+5. Report modified files and any risks.
 
