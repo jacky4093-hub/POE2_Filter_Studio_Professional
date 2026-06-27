@@ -1,5 +1,5 @@
 /* ============================================================
-   Rule Detail Editor — v6.0.0  (P13.7 Minimap Icon Picker)
+   Rule Detail Editor — v7.0.0  (P13.8 Alert Sound Picker)
    Loaded automatically by bootstrap.apply_theme() (sorted glob).
    ============================================================ */
 
@@ -205,6 +205,18 @@ QGroupBox#RuleEditorCard QSpinBox::down-button:hover {
 
 #ColorSwatch {
     border-radius: 2px;
+}
+
+/* ── Alert sound spinboxes (compact) ── */
+
+#AlertSoundIdSpin {
+    min-width: 55px;
+    max-width: 55px;
+}
+
+#AlertVolumeSpin {
+    min-width: 60px;
+    max-width: 70px;
 }
 
 /* ── Minimap picker dropdowns (compact) ── */

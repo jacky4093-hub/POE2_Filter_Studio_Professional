@@ -1,4 +1,4 @@
-"""RuleDetailEditor — v6.0.0  (P13.7 Minimap Icon Picker)
+"""RuleDetailEditor — v7.0.0  (P13.8 Alert Sound Picker)
 
 Design contract (unchanged from v2.3.0):
   - set_rule(rule, index) populates all fields WITHOUT emitting rule_changed.
@@ -32,6 +32,13 @@ P13.7 minimap icon picker:
     and triggers rule_changed.
   - Typing valid text syncs the dropdowns; invalid text leaves them unchanged.
   - _mm_parse() is the module-level pure validator (testable without GUI).
+
+P13.8 alert sound picker:
+  - Two QSpinBox controls (Sound ID 0–16, Volume 0–300) beside the text field.
+  - Changing either spin writes "{id} {vol}" back to the text field and triggers
+    rule_changed.  If either value is 0 the field is cleared instead.
+  - Typing valid text syncs the spinboxes; empty/invalid text resets both to 0.
+  - _alert_parse() is the module-level pure validator (testable without GUI).
 """
 
 from __future__ import annotations
@@ -82,6 +89,23 @@ def _mm_parse(text: str) -> tuple[str, str, str] | None:
     return size, color, shape
 
 
+def _alert_parse(text: str) -> tuple[int, int] | None:
+    """Parse PlayAlertSound text into (sound_id, volume), or None if invalid."""
+    parts = text.strip().split()
+    if len(parts) < 2:
+        return None
+    try:
+        sound_id = int(parts[0])
+        volume   = int(parts[1])
+    except ValueError:
+        return None
+    if not (0 <= sound_id <= 16):
+        return None
+    if not (0 <= volume <= 300):
+        return None
+    return sound_id, volume
+
+
 class RuleDetailEditor(QWidget):
     """Form editor for one FilterRule.  Emits rule_changed(index, updated_rule)."""
 
@@ -94,7 +118,8 @@ class RuleDetailEditor(QWidget):
         self._rule: FilterRule | None = None
         self._index: int = -1
         self._loading: bool = False   # guards spurious rule_changed during set_rule
-        self._mm_syncing: bool = False  # re-entrance guard for minimap sync
+        self._mm_syncing: bool = False     # re-entrance guard for minimap sync
+        self._alert_syncing: bool = False  # re-entrance guard for alert sound sync
 
         self._build_ui()
 
@@ -358,21 +383,91 @@ class RuleDetailEditor(QWidget):
         # setText does not trigger editingFinished, so call the slot manually
         self._on_any_field_changed()
 
+    # ------------------------------------------------------------------
+    # Alert sound picker sync
+    # ------------------------------------------------------------------
+
+    def _alert_sync_to_spins(self) -> None:
+        """Parse alert text and update spinboxes; reset to 0 if empty/invalid."""
+        if self._alert_syncing:
+            return
+        text = self._alert_edit.text()
+        parsed = _alert_parse(text) if text.strip() else None
+        self._alert_syncing = True
+        try:
+            if parsed is not None:
+                self._alert_id_spin.setValue(parsed[0])
+                self._alert_vol_spin.setValue(parsed[1])
+            else:
+                self._alert_id_spin.setValue(0)
+                self._alert_vol_spin.setValue(0)
+        finally:
+            self._alert_syncing = False
+
+    def _alert_sync_from_spins(self) -> None:
+        """Write spinbox values to alert text and emit rule_changed.
+        Either value == 0 → clear text (treat as not set)."""
+        if self._alert_syncing or self._rule is None:
+            return
+        self._alert_syncing = True
+        try:
+            sid = self._alert_id_spin.value()
+            vol = self._alert_vol_spin.value()
+            if sid == 0 or vol == 0:
+                self._alert_edit.setText("")
+            else:
+                self._alert_edit.setText(f"{sid} {vol}")
+        finally:
+            self._alert_syncing = False
+        # setText does not trigger editingFinished, so call the slot manually
+        self._on_any_field_changed()
+
     def _build_audio_card(self, vlayout: QVBoxLayout) -> None:
         box, form = self._make_card("音效")
 
+        # Text input (manual entry preserved)
         self._alert_edit = QLineEdit()
         self._alert_edit.setObjectName("RuleDetailAlertSound")
         self._alert_edit.setPlaceholderText("1 300")
         form.addRow("PlayAlertSound", self._alert_edit)
 
+        # Quick-pick spinboxes: Sound ID / Volume
+        picker = QWidget()
+        picker_layout = QHBoxLayout(picker)
+        picker_layout.setContentsMargins(0, 0, 0, 0)
+        picker_layout.setSpacing(4)
+
+        self._alert_id_spin = QSpinBox()
+        self._alert_id_spin.setObjectName("AlertSoundIdSpin")
+        self._alert_id_spin.setRange(0, 16)
+        self._alert_id_spin.setSpecialValueText("—")
+        self._alert_id_spin.setToolTip("音效 ID（0 = 不設定，範圍 0–16）")
+
+        vol_lbl = QLabel("音量")
+        self._alert_vol_spin = QSpinBox()
+        self._alert_vol_spin.setObjectName("AlertVolumeSpin")
+        self._alert_vol_spin.setRange(0, 300)
+        self._alert_vol_spin.setSpecialValueText("—")
+        self._alert_vol_spin.setToolTip("音量（0 = 不設定，範圍 0–300）")
+
+        picker_layout.addWidget(self._alert_id_spin)
+        picker_layout.addWidget(vol_lbl)
+        picker_layout.addWidget(self._alert_vol_spin)
+        picker_layout.addStretch()
+        form.addRow("快速選擇", picker)
+
+        # Format hint
         self._alert_hint = QLabel("格式：音效ID 音量（例：1 300）")
         self._alert_hint.setObjectName("RuleDetailHintLabel")
         form.addRow("", self._alert_hint)
 
         vlayout.addWidget(box)
 
+        # Connections
+        self._alert_edit.textChanged.connect(self._alert_sync_to_spins)
         self._alert_edit.editingFinished.connect(self._on_any_field_changed)
+        self._alert_id_spin.valueChanged.connect(self._alert_sync_from_spins)
+        self._alert_vol_spin.valueChanged.connect(self._alert_sync_from_spins)
 
     def _build_minimap_card(self, vlayout: QVBoxLayout) -> None:
         box, form = self._make_card("小地圖")

@@ -1,4 +1,4 @@
-"""RuleCardBrowser — v3.0.0
+"""RuleCardBrowser — v4.0.0
 
 QScrollArea-based card list. Drop-in replacement for RuleListWidget:
   - Same public signals (except rule_selected renamed → selected_rule_changed)
@@ -18,6 +18,12 @@ P13.5 (Rule Actions Polish):
   - Tooltips on every action button
   - Delete button styled as danger (objectName "BtnDanger")
 
+P14.0 (Rule Creation Wizard):
+  - ＋ 新增 button now opens RuleCreationDialog instead of inserting a blank rule
+  - On confirm: emits add_rule_from_wizard(FilterRule) then add_rule_requested()
+  - On cancel: nothing is emitted (no rule inserted)
+  - add_rule_from_wizard carries the template; add_rule_requested keeps backward compat
+
 Section collapse is not supported in the card view; get_section_states()
 always returns {} and apply_section_states() is a no-op.
 """
@@ -35,15 +41,17 @@ from core.categorizer import Category, classify_rule
 from core.rule_search import rule_matches_query
 from core.sections import SectionMap
 from ui.rule_card_widget import RuleCardWidget
+from ui.rule_creation_dialog import RuleCreationDialog
 
 
 class RuleCardBrowser(QWidget):
     # Signals — compatible with RuleListWidget except rule_selected is renamed
-    selected_rule_changed = Signal(int)    # real_index (was rule_selected)
-    add_rule_requested    = Signal()
-    delete_rule_requested = Signal(int)    # real_index
-    copy_rule_requested   = Signal(int)    # real_index
-    move_rule_requested   = Signal(int, int)  # stub: no drag-UI in P3
+    selected_rule_changed    = Signal(int)       # real_index (was rule_selected)
+    add_rule_requested       = Signal()          # backward-compat; fires after wizard confirms
+    add_rule_from_wizard     = Signal(object)    # carries FilterRule template on wizard confirm
+    delete_rule_requested    = Signal(int)       # real_index
+    copy_rule_requested      = Signal(int)       # real_index
+    move_rule_requested      = Signal(int, int)  # stub: no drag-UI in P3
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -426,7 +434,10 @@ class RuleCardBrowser(QWidget):
         self._update_button_states()
 
     def _on_add(self) -> None:
-        self.add_rule_requested.emit()
+        rule = RuleCreationDialog.get_rule(self)
+        if rule is not None:
+            self.add_rule_from_wizard.emit(rule)
+            self.add_rule_requested.emit()
 
     def _on_delete(self) -> None:
         if self._selected_real >= 0:

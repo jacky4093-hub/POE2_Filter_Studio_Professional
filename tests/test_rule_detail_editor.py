@@ -1237,3 +1237,236 @@ class TestP137MinimapPicker:
     def test_parse_empty_string(self, qapp):
         from ui.rule_detail_editor import _mm_parse
         assert _mm_parse("") is None
+
+
+# ---------------------------------------------------------------------------
+# TestP138AlertSoundPicker  (P13.8 — Alert Sound Picker spinboxes)
+# ---------------------------------------------------------------------------
+
+class TestP138AlertSoundPicker:
+    """Alert sound picker: Sound-ID (0–16) and Volume (0–300) QSpinBox controls
+    that sync bidirectionally with the PlayAlertSound text field."""
+
+    # ── widgets exist ─────────────────────────────────────────────
+
+    def test_alert_id_spin_exists(self, qapp):
+        from PySide6.QtWidgets import QSpinBox
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_alert_id_spin")
+        assert isinstance(ed._alert_id_spin, QSpinBox)
+
+    def test_alert_vol_spin_exists(self, qapp):
+        from PySide6.QtWidgets import QSpinBox
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_alert_vol_spin")
+        assert isinstance(ed._alert_vol_spin, QSpinBox)
+
+    def test_alert_edit_still_exists(self, qapp):
+        from PySide6.QtWidgets import QLineEdit
+        ed = _make_editor(qapp)
+        assert hasattr(ed, "_alert_edit")
+        assert isinstance(ed._alert_edit, QLineEdit)
+
+    # ── spin ranges ───────────────────────────────────────────────
+
+    def test_id_spin_min_is_0(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._alert_id_spin.minimum() == 0
+
+    def test_id_spin_max_is_16(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._alert_id_spin.maximum() == 16
+
+    def test_vol_spin_min_is_0(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._alert_vol_spin.minimum() == 0
+
+    def test_vol_spin_max_is_300(self, qapp):
+        ed = _make_editor(qapp)
+        assert ed._alert_vol_spin.maximum() == 300
+
+    # ── set_rule syncs spinboxes ──────────────────────────────────
+
+    def test_set_rule_syncs_id(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "3 200"]]), index=0)
+        assert ed._alert_id_spin.value() == 3
+
+    def test_set_rule_syncs_volume(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "3 200"]]), index=0)
+        assert ed._alert_vol_spin.value() == 200
+
+    def test_set_rule_empty_resets_spins(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        assert ed._alert_id_spin.value() == 0
+        assert ed._alert_vol_spin.value() == 0
+
+    def test_set_rule_does_not_emit(self, qapp):
+        ed = _make_editor(qapp)
+        received = _collect_signals(ed)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "1 300"]]), index=0)
+        assert received == []
+
+    def test_set_rule_invalid_does_not_crash(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "bad"]]), index=0)
+        assert ed._alert_edit.text() == "bad"
+
+    def test_set_rule_invalid_resets_spins_to_zero(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "3 200"]]), index=0)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "bad"]]), index=0)
+        assert ed._alert_id_spin.value() == 0
+        assert ed._alert_vol_spin.value() == 0
+
+    # ── spin → text ───────────────────────────────────────────────
+
+    def test_id_change_writes_text(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "1 200"]]), index=0)
+        ed._alert_id_spin.setValue(5)
+        assert ed._alert_edit.text() == "5 200"
+
+    def test_vol_change_writes_text(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "1 200"]]), index=0)
+        ed._alert_vol_spin.setValue(150)
+        assert ed._alert_edit.text() == "1 150"
+
+    def test_id_zero_clears_text(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "1 200"]]), index=0)
+        ed._alert_id_spin.setValue(0)
+        assert ed._alert_edit.text() == ""
+
+    def test_vol_zero_clears_text(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "1 200"]]), index=0)
+        ed._alert_vol_spin.setValue(0)
+        assert ed._alert_edit.text() == ""
+
+    # ── spin → emit ───────────────────────────────────────────────
+
+    def test_id_change_emits_rule_changed(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "1 200"]]), index=0)
+        received = _collect_signals(ed)
+        ed._alert_id_spin.setValue(2)
+        assert len(received) == 1
+        _idx, updated = received[0]
+        alert_vals = [v for k, v in updated.actions if k == "PlayAlertSound"]
+        assert alert_vals == ["2 200"]
+
+    def test_vol_change_emits_rule_changed(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "1 200"]]), index=0)
+        received = _collect_signals(ed)
+        ed._alert_vol_spin.setValue(100)
+        assert len(received) == 1
+
+    def test_id_zero_clears_action(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "1 200"]]), index=0)
+        received = _collect_signals(ed)
+        ed._alert_id_spin.setValue(0)
+        assert len(received) == 1
+        _idx, updated = received[0]
+        # _update_in_list removes the key when value is ""
+        alert_vals = [v for k, v in updated.actions if k == "PlayAlertSound"]
+        assert alert_vals == []
+
+    def test_vol_zero_clears_action(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "1 200"]]), index=0)
+        received = _collect_signals(ed)
+        ed._alert_vol_spin.setValue(0)
+        assert len(received) == 1
+        _idx, updated = received[0]
+        alert_vals = [v for k, v in updated.actions if k == "PlayAlertSound"]
+        assert alert_vals == []
+
+    # ── text → spins (manual input syncs controls) ────────────────
+
+    def test_manual_valid_text_syncs_id(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._alert_edit.setText("7 250")
+        assert ed._alert_id_spin.value() == 7
+
+    def test_manual_valid_text_syncs_vol(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._alert_edit.setText("7 250")
+        assert ed._alert_vol_spin.value() == 250
+
+    def test_manual_empty_text_resets_spins(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "1 200"]]), index=0)
+        ed._alert_edit.setText("")
+        assert ed._alert_id_spin.value() == 0
+        assert ed._alert_vol_spin.value() == 0
+
+    def test_manual_invalid_text_does_not_crash(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        ed._alert_edit.setText("not valid")
+        # no crash, spins reset to 0
+        assert ed._alert_id_spin.value() == 0
+
+    def test_manual_text_does_not_emit_until_editing_finished(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(), index=0)
+        received = _collect_signals(ed)
+        ed._alert_edit.setText("3 200")
+        assert received == []
+
+    # ── no circular loop ─────────────────────────────────────────
+
+    def test_no_loop_on_spin_change(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "1 200"]]), index=0)
+        received = _collect_signals(ed)
+        ed._alert_vol_spin.setValue(250)
+        assert len(received) == 1
+
+    def test_syncing_flag_resets_after_change(self, qapp):
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["PlayAlertSound", "1 200"]]), index=0)
+        ed._alert_id_spin.setValue(3)
+        assert ed._alert_syncing is False
+
+    # ── _alert_parse module-level helper ─────────────────────────
+
+    def test_parse_valid(self, qapp):
+        from ui.rule_detail_editor import _alert_parse
+        assert _alert_parse("1 300") == (1, 300)
+
+    def test_parse_boundary_max(self, qapp):
+        from ui.rule_detail_editor import _alert_parse
+        assert _alert_parse("16 300") == (16, 300)
+
+    def test_parse_zero_id(self, qapp):
+        from ui.rule_detail_editor import _alert_parse
+        assert _alert_parse("0 200") == (0, 200)
+
+    def test_parse_id_out_of_range(self, qapp):
+        from ui.rule_detail_editor import _alert_parse
+        assert _alert_parse("17 300") is None
+
+    def test_parse_vol_out_of_range(self, qapp):
+        from ui.rule_detail_editor import _alert_parse
+        assert _alert_parse("1 301") is None
+
+    def test_parse_non_numeric(self, qapp):
+        from ui.rule_detail_editor import _alert_parse
+        assert _alert_parse("abc 300") is None
+
+    def test_parse_too_few_parts(self, qapp):
+        from ui.rule_detail_editor import _alert_parse
+        assert _alert_parse("1") is None
+
+    def test_parse_empty(self, qapp):
+        from ui.rule_detail_editor import _alert_parse
+        assert _alert_parse("") is None
