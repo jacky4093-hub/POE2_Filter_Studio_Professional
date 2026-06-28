@@ -1613,8 +1613,8 @@ class TestP153ColorPickLayout:
     def test_swatch_fixed_size(self, qapp):
         ed = _make_editor(qapp)
         swatch = ed._textcolor_swatch
-        assert swatch.width() == 22
-        assert swatch.height() == 20
+        assert swatch.width() == 26   # P18.4 V4: enlarged from 22
+        assert swatch.height() == 22  # P18.4 V4: enlarged from 20
 
     def test_pick_btn_fixed_width(self, qapp):
         ed = _make_editor(qapp)

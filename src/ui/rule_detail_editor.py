@@ -409,8 +409,8 @@ class RuleDetailEditor(QWidget):
         content.setObjectName("RuleDetailContent")
 
         vlayout = QVBoxLayout(content)
-        vlayout.setContentsMargins(10, 0, 10, 10)
-        vlayout.setSpacing(6)
+        vlayout.setContentsMargins(12, 4, 12, 12)
+        vlayout.setSpacing(8)
 
         self._build_title_bar(vlayout)
         self._build_basic_card(vlayout)
@@ -441,8 +441,8 @@ class RuleDetailEditor(QWidget):
         box = QGroupBox(title)
         box.setObjectName("RuleEditorCard")
         form = QFormLayout(box)
-        form.setSpacing(6)
-        form.setContentsMargins(8, 4, 8, 8)
+        form.setSpacing(8)
+        form.setContentsMargins(10, 6, 10, 10)
         form.setLabelAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
@@ -502,7 +502,7 @@ class RuleDetailEditor(QWidget):
         # Colour preview swatch — visual anchor, also clickable
         swatch = QLabel()
         swatch.setObjectName("ColorSwatch")
-        swatch.setFixedSize(22, 20)
+        swatch.setFixedSize(26, 22)
         swatch.setCursor(Qt.CursorShape.PointingHandCursor)
         self._update_one_swatch(swatch, "")
         hlayout.addWidget(swatch)
@@ -517,7 +517,7 @@ class RuleDetailEditor(QWidget):
         btn = QPushButton("選色")
         btn.setObjectName(btn_obj_name)
         btn.setFixedWidth(48)
-        btn.setFixedHeight(24)
+        btn.setFixedHeight(26)
         btn.setToolTip("開啟顏色選取器（支援 Alpha 透明度）")
         hlayout.addWidget(btn)
 
