@@ -1,11 +1,19 @@
 /* ============================================================
-   POE2 Filter Studio — v3.0.0  P15.2 Premium Theme
-   Category Sidebar
+   POE2 Filter Studio — v4.0.0  P18.2 Category Sidebar V4
    ============================================================ */
+
+/* ── Sidebar container ── */
 
 #CategorySidebar {
     background-color: #0d1117;
     border: none;
+}
+
+/* ── Header ── */
+
+#CategorySidebarHeader {
+    background-color: #0d1117;
+    border-bottom: 1px solid #131e30;
 }
 
 #CategorySidebarTitle {
@@ -14,9 +22,58 @@
     font-size: 10px;
     letter-spacing: 1.2px;
     text-transform: uppercase;
-    padding: 12px 10px 6px 10px;
     background: transparent;
 }
+
+/* ── Category Search Row ── */
+
+#CategorySearchRow {
+    background-color: #0d1117;
+    padding: 2px 0;
+}
+
+#CategorySearchInput {
+    background-color: #111827;
+    color: #c8d4e8;
+    border: 1px solid #1c2845;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    selection-background-color: #3b82f6;
+}
+
+#CategorySearchInput:focus {
+    border-color: #3b82f6;
+    background-color: #141e30;
+}
+
+#CategorySearchInput::placeholder {
+    color: #3a4a66;
+}
+
+#CategorySearchClearButton {
+    background-color: transparent;
+    color: #4a5a78;
+    border: none;
+    border-radius: 3px;
+    font-size: 10px;
+    padding: 0;
+}
+
+#CategorySearchClearButton:enabled {
+    color: #7e8eaf;
+}
+
+#CategorySearchClearButton:enabled:hover {
+    background-color: #1c2845;
+    color: #dde4f0;
+}
+
+#CategorySearchClearButton:disabled {
+    color: #2a3550;
+}
+
+/* ── Category List ── */
 
 #CategorySidebarList {
     background-color: transparent;
@@ -44,4 +101,64 @@
     color: #dde4f0;
     border-left: 3px solid #7c3aed;
     font-weight: bold;
+}
+
+/* ── Active Filter Chip ── */
+
+#CategoryActiveFilterChip {
+    background-color: rgba(59, 130, 246, 0.12);
+    border: 1px solid #1c3a6b;
+    border-radius: 4px;
+    margin: 4px 8px;
+}
+
+#CategoryActiveFilterLabel {
+    color: #60a5fa;
+    font-size: 11px;
+    background: transparent;
+}
+
+#CategoryActiveFilterClearButton {
+    background-color: transparent;
+    color: #60a5fa;
+    border: none;
+    border-radius: 3px;
+    font-size: 10px;
+    padding: 0;
+}
+
+#CategoryActiveFilterClearButton:hover {
+    background-color: #1c3a6b;
+    color: #93c5fd;
+}
+
+/* ── Quick Search Section (P18.3+ placeholder) ── */
+
+#CategoryQuickSearchSection {
+    background-color: #08101c;
+    border-top: 1px solid #131e30;
+}
+
+#CategoryQuickSearchTitle {
+    color: #3a4a66;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    background: transparent;
+}
+
+#CategoryQuickSearchInput {
+    background-color: #0d1117;
+    color: #2a3550;
+    border: 1px solid #131e30;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+#CategoryQuickSearchInput:disabled {
+    background-color: #0a0f1a;
+    color: #1c2845;
+    border-color: #0f1825;
 }
