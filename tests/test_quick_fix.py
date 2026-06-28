@@ -85,11 +85,12 @@ class TestGetQuickFixesFontSize:
         assert fixes[0].new_value == "1"
         assert fixes[0].field == "SetFontSize"
 
-    def test_size_46_clamp_to_45(self):
-        rule = _rule(actions=[["SetFontSize", "46"]])
+    def test_size_61_clamp_to_60(self):
+        # P17.9A: valid range is 1–60; 61 clamps to 60
+        rule = _rule(actions=[["SetFontSize", "61"]])
         issue = _issue(ValidationSeverity.WARNING, "SetFontSize")
         fixes = get_quick_fixes(rule, issue)
-        assert fixes[0].new_value == "45"
+        assert fixes[0].new_value == "60"
 
     def test_size_negative_clamp_to_1(self):
         rule = _rule(actions=[["SetFontSize", "-10"]])
@@ -97,11 +98,12 @@ class TestGetQuickFixesFontSize:
         fixes = get_quick_fixes(rule, issue)
         assert fixes[0].new_value == "1"
 
-    def test_size_100_clamp_to_45(self):
+    def test_size_100_clamp_to_60(self):
+        # P17.9A: clamp upper limit is now 60, not 45
         rule = _rule(actions=[["SetFontSize", "100"]])
         issue = _issue(ValidationSeverity.WARNING, "SetFontSize")
         fixes = get_quick_fixes(rule, issue)
-        assert fixes[0].new_value == "45"
+        assert fixes[0].new_value == "60"
 
     def test_non_integer_no_fix(self):
         rule = _rule(actions=[["SetFontSize", "large"]])
@@ -114,13 +116,15 @@ class TestGetQuickFixesFontSize:
         assert get_quick_fixes(rule, issue) == []
 
     def test_fix_label_contains_clamped_value(self):
+        # P17.9A: clamp target is 60, not 45
         rule = _rule(actions=[["SetFontSize", "100"]])
         issue = _issue(ValidationSeverity.WARNING, "SetFontSize")
         fixes = get_quick_fixes(rule, issue)
-        assert "45" in fixes[0].label
+        assert "60" in fixes[0].label
 
-    @pytest.mark.parametrize("size", [1, 22, 45])
+    @pytest.mark.parametrize("size", [1, 22, 45, 60])
     def test_boundary_valid_no_fix(self, size):
+        # P17.9A: 60 is now at the boundary and also valid
         rule = _rule(actions=[["SetFontSize", str(size)]])
         issue = _issue(ValidationSeverity.WARNING, "SetFontSize")
         assert get_quick_fixes(rule, issue) == []
@@ -525,7 +529,8 @@ class TestMainWindowQuickFix:
         assert window.validation_panel._list.count() >= 1
         fix = QuickFix("修正為 45", "SetFontSize", "45")
         window._on_quick_fix_requested(0, fix)
-        # After fix: validation panel should be clean
+        # P17.9B: validation is deferred 300ms — fire the callback directly
+        window._on_deferred_post_edit()
         assert "0" in window.validation_panel._error_chip.text()
         assert "0" in window.validation_panel._warning_chip.text()
 

@@ -1004,18 +1004,22 @@ class MainWindow(QMainWindow):
             self._navigate_to(rule_index)
 
     def _on_quick_fix_requested(self, rule_index: int, fix) -> None:
-        """Apply a QuickFix via the standard UpdateRuleCommand (supports undo)."""
+        """Apply a QuickFix via fast path — no full card rebuild (supports undo)."""
         if not (0 <= rule_index < len(self._doc.rules)):
             return
         old_rule = copy.deepcopy(self._doc.rules[rule_index])
         new_rule = apply_quick_fix(old_rule, fix)
         cmd = UpdateRuleCommand(self._doc, rule_index, old_rule, new_rule)
         self._doc.execute(cmd)
-        self._reload_rule_list()
+        updated = self._doc.rules[rule_index]
+        self.rule_card_browser.update_single_card(rule_index, updated)
         if rule_index == self._selected_index:
-            self._load_rule_to_ui(rule_index)
-        self._refresh_status()
+            self._editing_snapshot = copy.deepcopy(updated)
+            self.rule_detail_editor.set_rule(updated, rule_index)
+            self.preview_panel.show_rule(updated)
+        self._refresh_status_fast()
         self._refresh_undo_actions()
+        self._validation_timer.start(300)
 
     def _update_rule_count_label(self) -> None:
         """Sync rule count into browser header label and status bar."""

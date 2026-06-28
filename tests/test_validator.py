@@ -157,8 +157,12 @@ class TestFontSizeValidation:
         assert len(issues) == 1
         assert issues[0].severity == ValidationSeverity.WARNING
 
-    def test_size_46_is_warning(self):
-        issues = validate_rule(_rule(actions=[["SetFontSize", "46"]]))
+    def test_size_46_no_warning(self):
+        # P17.9A: POE2 valid range is 1–60; 46 is now valid
+        assert validate_rule(_rule(actions=[["SetFontSize", "46"]])) == []
+
+    def test_size_61_is_warning(self):
+        issues = validate_rule(_rule(actions=[["SetFontSize", "61"]]))
         assert len(issues) == 1
         assert issues[0].severity == ValidationSeverity.WARNING
 
@@ -186,8 +190,9 @@ class TestFontSizeValidation:
         issues = validate_rule(_rule(actions=[["SetFontSize", "12.5"]]))
         assert issues[0].severity == ValidationSeverity.WARNING
 
-    @pytest.mark.parametrize("size", range(1, 46))
-    def test_valid_range_1_to_45(self, size):
+    @pytest.mark.parametrize("size", range(1, 61))
+    def test_valid_range_1_to_60(self, size):
+        # P17.9A: POE2 SetFontSize valid range is 1–60
         assert validate_rule(_rule(actions=[["SetFontSize", str(size)]])) == []
 
 
@@ -436,9 +441,9 @@ class TestDocumentValidation:
 
     def test_document_rule_indices_match_positions(self):
         rules = [
-            _rule(actions=[["SetFontSize", "0"]]),   # idx 0
+            _rule(actions=[["SetFontSize", "0"]]),   # idx 0 — warning (< 1)
             _rule(actions=[["SetFontSize", "32"]]),  # idx 1 — valid
-            _rule(actions=[["SetFontSize", "50"]]),  # idx 2
+            _rule(actions=[["SetFontSize", "61"]]),  # idx 2 — warning (> 60)
         ]
         issues = validate_document(_FakeDoc(rules))
         indices = {i.rule_index for i in issues}
@@ -522,3 +527,29 @@ class TestValidateRuleEdgeCases:
         # Must not raise
         issues = validate_rule(rule)
         assert isinstance(issues, list)
+
+
+# ---------------------------------------------------------------------------
+# TestFontSizeValidationPOE2Range  (P17.9A — POE2 valid range 1–60)
+# ---------------------------------------------------------------------------
+
+class TestFontSizeValidationPOE2Range:
+
+    def test_size_60_no_warning(self):
+        assert validate_rule(_rule(actions=[["SetFontSize", "60"]])) == []
+
+    def test_size_61_is_warning(self):
+        issues = validate_rule(_rule(actions=[["SetFontSize", "61"]]))
+        assert len(issues) == 1
+        assert issues[0].severity == ValidationSeverity.WARNING
+
+    def test_size_50_no_warning(self):
+        assert validate_rule(_rule(actions=[["SetFontSize", "50"]])) == []
+
+    def test_size_60_disabled_downgraded_to_info(self):
+        # At boundary 60, no warning — so disabled rule also no issue at all
+        assert validate_rule(_rule(enabled=False, actions=[["SetFontSize", "60"]])) == []
+
+    def test_warning_message_uses_1_to_60(self):
+        issues = validate_rule(_rule(actions=[["SetFontSize", "61"]]))
+        assert "1–60" in issues[0].message

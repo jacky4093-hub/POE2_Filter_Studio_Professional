@@ -9,7 +9,7 @@ get_quick_fixes  — derive available fixes from a (rule, issue) pair
 apply_quick_fix  — return a new FilterRule with the fix applied
 
 Supported fixes (low-risk, deterministic):
-  SetFontSize      — clamp integer value to [1, 45]  (non-integer → no fix)
+  SetFontSize      — clamp integer value to [1, 60]  (non-integer → no fix)
   SetTextColor /
   SetBorderColor /
   SetBackgroundColor — clamp each channel to [0, 255]
@@ -60,9 +60,9 @@ def _fontsize_fixes(key: str, value: str) -> list[QuickFix]:
         size = int(value.strip())
     except ValueError:
         return []  # non-integer → not safe to auto-fix
-    if 1 <= size <= 45:
+    if 1 <= size <= 60:
         return []  # already valid
-    clamped = max(1, min(45, size))
+    clamped = max(1, min(60, size))
     return [QuickFix(label=f"修正為 {clamped}", field=key, new_value=str(clamped))]
 
 

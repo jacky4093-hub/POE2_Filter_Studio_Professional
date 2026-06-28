@@ -159,7 +159,8 @@ class TestValidationAfterCommentStrip:
         assert any(i.field == "SetTextColor" for i in issues)
 
     def test_out_of_range_fontsize_no_comment_still_detected(self):
-        doc = _doc_from_text("Show\n    SetFontSize 50\n")
+        # P17.9A: valid range is 1–60; use 61 to ensure warning is still detected
+        doc = _doc_from_text("Show\n    SetFontSize 61\n")
         issues = validate_document(doc)
         assert any(i.field == "SetFontSize" for i in issues)
 

@@ -79,11 +79,11 @@ def _check_fontsize(value: str) -> ValidationIssue | None:
             field="SetFontSize",
             message=f"SetFontSize 值無效：{value!r}",
         )
-    if not (1 <= size <= 45):
+    if not (1 <= size <= 60):
         return ValidationIssue(
             severity=ValidationSeverity.WARNING,
             field="SetFontSize",
-            message=f"SetFontSize {size} 超出建議範圍（1–45）",
+            message=f"SetFontSize {size} 超出建議範圍（1–60）",
         )
     return None
 
