@@ -31,7 +31,7 @@ from PySide6.QtCore import Signal, Qt
 from PySide6.QtGui import QMouseEvent
 
 from core.models import FilterRule
-from core.categorizer import CATEGORY_LABELS, CATEGORY_COLORS, classify_rule
+from core.categorizer import Category, CATEGORY_LABELS, CATEGORY_COLORS, classify_rule
 from assets.icon_registry import IconRegistry
 
 
@@ -103,12 +103,14 @@ class RuleCardWidget(QFrame):
         real_index: int,
         rule: FilterRule,
         display_num: int,
+        category: Category | None = None,
         parent: QFrame | None = None,
     ) -> None:
         super().__init__(parent)
         self._real_index = real_index
         self._rule = rule
         self._display_num = display_num
+        self._category: Category | None = category  # P17.10B: pre-classified by browser cache
 
         self.setObjectName("RuleCard")
         self.setFrameShape(QFrame.Shape.StyledPanel)
@@ -281,7 +283,8 @@ class RuleCardWidget(QFrame):
         self._detail_container.setVisible(has_detail)
 
         # ── Category badge ─────────────────────────────────────────────
-        cat = classify_rule(rule)
+        # P17.10B: use pre-classified category from browser cache; fallback to classify_rule
+        cat = self._category if self._category is not None else classify_rule(rule)
         cat_label = CATEGORY_LABELS.get(cat, "")
         cat_color = CATEGORY_COLORS.get(cat, "#64748b")
         if cat_label:
@@ -322,15 +325,20 @@ class RuleCardWidget(QFrame):
         self._display_num = num
         self._num_lbl.setText(f"#{num}")
 
-    def update_rule(self, rule: FilterRule) -> None:
+    def update_rule(self, rule: FilterRule, category: Category | None = None) -> None:
         """Update card content in-place without destroying the widget.
 
         Avoids Qt widget allocation/deallocation on every field edit.
         Only repolishes the stylesheet when the enabled state changes
         (which affects the cardDisabled Qt property used by QSS selectors).
+
+        P17.10B: pass category to avoid a redundant classify_rule() call when
+        the caller (update_single_card) has already classified the rule.
         """
         was_enabled = self._rule.enabled
         self._rule = rule
+        if category is not None:
+            self._category = category
         self._refresh_display()
         if rule.enabled != was_enabled:
             self._repolish()

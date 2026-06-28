@@ -80,6 +80,10 @@ class RuleCardBrowser(QWidget):
         # Live card map: real_index → RuleCardWidget (persists across refresh() calls)
         self._cards: dict[int, RuleCardWidget] = {}
 
+        # P17.10B: browser-local category cache (real_index → Category)
+        # Rebuilt on load_rules() and pool mutations; updated per-card on update_single_card()
+        self._category_cache: dict[int, Category] = {}
+
         # P17.7: persistent pool state
         # list of (section_idx, QLabel) for show/hide in refresh()
         self._section_headers: list[tuple[int, QLabel]] = []
@@ -181,6 +185,8 @@ class RuleCardBrowser(QWidget):
     def load_rules(self, rules: list[FilterRule], section_map: SectionMap | None = None) -> None:
         self._rules = rules
         self._section_map = section_map
+        # P17.10B-1: classify all rules once before pool rebuild so _make_card can use cache
+        self._rebuild_category_cache()
         self._rebuild_card_pool()
         self.refresh()
 
@@ -202,12 +208,17 @@ class RuleCardBrowser(QWidget):
         Calls RuleCardWidget.update_rule() which refreshes label text/visibility
         without destroying the widget — avoids Qt widget allocation on every edit.
 
+        P17.10B-4: classifies the rule exactly once, updates _category_cache[real_index],
+        then passes the result to update_rule() so the widget skips its own classify call.
+
         Returns True on success, False when the card doesn't exist.
         """
         card = self._cards.get(real_index)
         if card is None:
             return False
-        card.update_rule(rule)
+        new_cat = classify_rule(rule)
+        self._category_cache[real_index] = new_cat
+        card.update_rule(rule, category=new_cat)
         self._update_header_state()
         return True
 
@@ -233,7 +244,7 @@ class RuleCardBrowser(QWidget):
                 card.hide()
                 continue
             rule = self._rules[real_idx]
-            show = self._passes_filter(rule)
+            show = self._passes_filter(rule, real_idx)
             card.setVisible(show)
 
             if show:
@@ -461,9 +472,12 @@ class RuleCardBrowser(QWidget):
         else:
             layout_pos = max(0, self._list_layout.count() - 1)
 
+        # P17.10B-5: rebuild cache BEFORE _make_card so the new card gets the right category
+        self._rebuild_category_cache()
+
         # Create and insert the new card
         new_card = self._make_card(insert_at, rule, insert_at + 1)
-        new_card.setVisible(self._passes_filter(rule))
+        new_card.setVisible(self._passes_filter(rule, insert_at))
         if layout_pos >= 0:
             self._list_layout.insertWidget(layout_pos, new_card)
         else:
@@ -512,6 +526,8 @@ class RuleCardBrowser(QWidget):
         elif self._selected_real > remove_at:
             self._selected_real -= 1
 
+        # P17.10B-5: rebuild cache after removal (indices have shifted)
+        self._rebuild_category_cache()
         self._renumber_all_cards()
         self._update_empty_state()
         self._update_button_states()
@@ -556,8 +572,22 @@ class RuleCardBrowser(QWidget):
         card_a.update_display_num(self._card_display_num(idx_b))
         card_b.update_display_num(self._card_display_num(idx_a))
 
+        # P17.10B-5: swap the two cache entries to match new rule positions
+        self._rebuild_category_cache()
         self._update_button_states()
         self._update_header_state()
+
+    def _rebuild_category_cache(self) -> None:
+        """Classify every current rule exactly once and store results in _category_cache.
+
+        P17.10B-1: Called by load_rules() and pool mutations so that refresh()
+        and _make_card() never need to call classify_rule() themselves.
+        """
+        self._category_cache = {
+            i: classify_rule(rule)
+            for i, rule in enumerate(self._rules)
+            if rule.action != "__TAIL__"
+        }
 
     def _card_display_num(self, real_index: int) -> int:
         """Return sequential display number for real_index (1-based, counting non-TAIL)."""
@@ -620,7 +650,8 @@ class RuleCardBrowser(QWidget):
     # ------------------------------------------------------------------
 
     def _make_card(self, real_idx: int, rule: FilterRule, display_num: int) -> RuleCardWidget:
-        card = RuleCardWidget(real_idx, rule, display_num)
+        card = RuleCardWidget(real_idx, rule, display_num,
+                              category=self._category_cache.get(real_idx))
 
         # Restore current selection
         if real_idx == self._selected_real:
@@ -649,11 +680,16 @@ class RuleCardBrowser(QWidget):
     # Layout helpers
     # ------------------------------------------------------------------
 
-    def _passes_filter(self, rule: FilterRule) -> bool:
+    def _passes_filter(self, rule: FilterRule, real_idx: int | None = None) -> bool:
         if rule.action == "__TAIL__":
             return False
         if self._category_filter is not None:
-            if classify_rule(rule) != self._category_filter:
+            # P17.10B-3: use browser cache when real_idx is known; fallback to classify_rule
+            if real_idx is not None and real_idx in self._category_cache:
+                cat = self._category_cache[real_idx]
+            else:
+                cat = classify_rule(rule)
+            if cat != self._category_filter:
                 return False
         if self._search_query:
             if not rule_matches_query(rule, self._search_query, self._search_options):
