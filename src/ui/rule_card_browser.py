@@ -44,7 +44,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Signal, Qt
 
 from core.models import FilterRule
-from core.categorizer import Category, classify_rule
+from core.categorizer import Category, CATEGORY_LABELS, classify_rule
 from core.rule_search import rule_matches_query
 from core.sections import SectionMap
 from ui.rule_card_widget import RuleCardWidget
@@ -87,6 +87,7 @@ class RuleCardBrowser(QWidget):
         self._empty_lbl: QLabel | None = None
 
         self._build_ui()
+        self._update_header_state()
 
     # ------------------------------------------------------------------
     # UI construction
@@ -96,6 +97,28 @@ class RuleCardBrowser(QWidget):
         root = QVBoxLayout(self)
         root.setContentsMargins(4, 4, 4, 4)
         root.setSpacing(4)
+
+        # V4 browser status bar — shows current filter state (title lives in col_browser header)
+        self._header = QWidget()
+        self._header.setObjectName("RuleBrowserHeaderV4")
+        header_layout = QHBoxLayout(self._header)
+        header_layout.setContentsMargins(8, 4, 8, 4)
+        header_layout.setSpacing(6)
+
+        # Visible-count indicator: "45 / 142" or "142"
+        self._count_lbl = QLabel("")
+        self._count_lbl.setObjectName("RuleBrowserCount")
+        header_layout.addWidget(self._count_lbl)
+
+        header_layout.addStretch()
+
+        # Active-filter chip: hidden when no filter is active
+        self._active_filter_lbl = QLabel("")
+        self._active_filter_lbl.setObjectName("RuleBrowserActiveFilterChip")
+        self._active_filter_lbl.hide()
+        header_layout.addWidget(self._active_filter_lbl)
+
+        root.addWidget(self._header)
 
         # ── Action buttons ────────────────────────────────────────
         btn_row = QHBoxLayout()
@@ -185,6 +208,7 @@ class RuleCardBrowser(QWidget):
         if card is None:
             return False
         card.update_rule(rule)
+        self._update_header_state()
         return True
 
     def refresh(self) -> None:
@@ -255,6 +279,7 @@ class RuleCardBrowser(QWidget):
             self._selected_real = -1
 
         self._update_button_states()
+        self._update_header_state()
 
     def select_real_index(self, real_index: int) -> None:
         """Programmatically select a card by real_index."""
@@ -446,6 +471,7 @@ class RuleCardBrowser(QWidget):
         self._renumber_all_cards()
         self._update_empty_state()
         self._update_button_states()
+        self._update_header_state()
 
     def pool_remove_card(self, remove_at: int, new_rules: list[FilterRule]) -> None:
         """Remove one card at remove_at from the pool without a full rebuild.
@@ -481,6 +507,7 @@ class RuleCardBrowser(QWidget):
         self._renumber_all_cards()
         self._update_empty_state()
         self._update_button_states()
+        self._update_header_state()
 
     def pool_swap_cards(self, idx_a: int, idx_b: int,
                         new_rules: list[FilterRule]) -> None:
@@ -522,6 +549,7 @@ class RuleCardBrowser(QWidget):
         card_b.update_display_num(self._card_display_num(idx_a))
 
         self._update_button_states()
+        self._update_header_state()
 
     def _card_display_num(self, real_index: int) -> int:
         """Return sequential display number for real_index (1-based, counting non-TAIL)."""
@@ -547,6 +575,37 @@ class RuleCardBrowser(QWidget):
             self._empty_lbl.show()
         else:
             self._empty_lbl.hide()
+
+    def _update_header_state(self) -> None:
+        """Update V4 browser header labels without changing card membership."""
+        if not hasattr(self, "_count_lbl"):
+            return
+
+        total   = self.get_total_count()
+        visible = self.get_visible_count()
+        if not total:
+            self._count_lbl.setText("0")
+        elif visible == total:
+            self._count_lbl.setText(f"{total}")
+        else:
+            self._count_lbl.setText(f"{visible} / {total}")
+
+        # Active-filter chip: only visible when a filter is applied
+        filter_parts: list[str] = []
+        if self._category_filter is not None:
+            filter_parts.append(
+                CATEGORY_LABELS.get(self._category_filter, self._category_filter.value)
+            )
+        if self._search_query:
+            q = self._search_query
+            q_short = (q[:18] + "…") if len(q) > 20 else q
+            filter_parts.append(f"「{q_short}」")
+
+        if filter_parts:
+            self._active_filter_lbl.setText("  ×  ".join(filter_parts))
+            self._active_filter_lbl.show()
+        else:
+            self._active_filter_lbl.hide()
 
     # ------------------------------------------------------------------
     # Widget factories

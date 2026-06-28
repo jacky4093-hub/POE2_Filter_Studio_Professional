@@ -135,7 +135,7 @@ class RuleCardWidget(QFrame):
         # ── Left colour bar ────────────────────────────────────────────
         self._bar_lbl = QLabel()
         self._bar_lbl.setObjectName("RuleCardBar")
-        self._bar_lbl.setFixedWidth(4)
+        self._bar_lbl.setFixedWidth(5)
         outer.addWidget(self._bar_lbl)
 
         # ── Body ───────────────────────────────────────────────────────
@@ -153,7 +153,7 @@ class RuleCardWidget(QFrame):
         row = QHBoxLayout()
         row.setSpacing(5)
 
-        self._num_lbl = QLabel(f"[{display_num}]")
+        self._num_lbl = QLabel(f"#{display_num}")
         self._num_lbl.setObjectName("RuleCardNum")
         row.addWidget(self._num_lbl)
 
@@ -285,8 +285,12 @@ class RuleCardWidget(QFrame):
         cat_label = CATEGORY_LABELS.get(cat, "")
         cat_color = CATEGORY_COLORS.get(cat, "#64748b")
         if cat_label:
-            self._cat_badge_lbl.setText(f"● {cat_label}")
-            self._cat_badge_lbl.setStyleSheet(f"color: {cat_color};")
+            self._cat_badge_lbl.setText(cat_label)
+            self._cat_badge_lbl.setStyleSheet(
+                f"color: {cat_color}; background: {cat_color}26;"
+                "border-radius: 3px; padding: 0px 5px;"
+                "font-size: 10px; font-weight: 600;"
+            )
             self._cat_badge_lbl.show()
         else:
             self._cat_badge_lbl.hide()
@@ -316,7 +320,7 @@ class RuleCardWidget(QFrame):
     def update_display_num(self, num: int) -> None:
         """Update the display number label in-place (used by pool renumbering)."""
         self._display_num = num
-        self._num_lbl.setText(f"[{num}]")
+        self._num_lbl.setText(f"#{num}")
 
     def update_rule(self, rule: FilterRule) -> None:
         """Update card content in-place without destroying the widget.

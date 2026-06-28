@@ -1,8 +1,8 @@
 /* ============================================================
-   Rule Card Browser — v3.2.0  (P15.2 Premium Theme)
+   Rule Card Browser — v4.0.0  P18.3 V4 Visual Update
    ============================================================ */
 
-/* ── Action buttons ── */
+/* ── Action buttons (inside browser) ── */
 
 QPushButton#BtnAdd,
 QPushButton#BtnCopy,
@@ -54,12 +54,40 @@ QPushButton#BtnDanger:disabled {
     border-color: #1a1218;
 }
 
+/* ── V4 Browser status bar (inside RuleCardBrowser) ── */
+
+#RuleBrowserHeaderV4 {
+    background-color: #09111e;
+    border-bottom: 1px solid #131e30;
+    min-height: 28px;
+    max-height: 28px;
+}
+
+#RuleBrowserCount {
+    color: #4d6080;
+    font-size: 11px;
+    font-weight: bold;
+    background: transparent;
+    padding: 0 2px;
+}
+
+/* Active-filter chip — only shown when a filter is active */
+#RuleBrowserActiveFilterChip {
+    color: #60a5fa;
+    background: rgba(59, 130, 246, 0.10);
+    border: 1px solid #1c3a6b;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 1px 8px;
+    max-height: 20px;
+}
+
 /* ── Scroll area & content ── */
 
 #RuleCardScrollArea {
     background: #07090f;
-    border: 1px solid #1c2845;
-    border-radius: 3px;
+    border: none;
 }
 
 #RuleCardContent {
@@ -69,21 +97,21 @@ QPushButton#BtnDanger:disabled {
 /* ── Individual card — Default ── */
 
 #RuleCard {
-    background: #0e1625;
-    border: 1px solid #1c2845;
+    background: #0c1524;
+    border: 1px solid #162035;
     border-radius: 5px;
-    margin: 1px 3px;
+    margin: 1px 2px;
 }
 
 #RuleCard:hover {
-    background: #131f38;
-    border-color: #253558;
+    background: #111f38;
+    border-color: #1e3050;
 }
 
 /* ── Selected state ── */
 
 #RuleCard[cardSelected="true"] {
-    background: #0b1e47;
+    background: #0a1e4a;
     border-color: #3b82f6;
     border-left: 3px solid #3b82f6;
 }
@@ -91,7 +119,7 @@ QPushButton#BtnDanger:disabled {
 /* ── Search highlight — cursor match ── */
 
 #RuleCard[cardHighlight="current"] {
-    background: #1f1400;
+    background: #1f1600;
     border-color: #f59e0b;
     border-left: 3px solid #f59e0b;
 }
@@ -99,25 +127,27 @@ QPushButton#BtnDanger:disabled {
 /* ── Search highlight — other matches ── */
 
 #RuleCard[cardHighlight="match"] {
-    background: #141000;
-    border-color: #92400e;
+    background: #14110a;
+    border-color: #78480c;
 }
 
 /* ── Disabled rule ── */
 
 #RuleCard[cardDisabled="true"] {
-    background: #090c12;
-    border-color: #141c2a;
+    background: #080b11;
+    border-color: #111825;
     opacity: 0.6;
 }
 
-/* ── Card text elements ── */
+/* ── Number label ── */
 
 #RuleCardNum {
-    color: #3d4f6b;
+    color: #2d3f5c;
     font-size: 10px;
-    min-width: 28px;
+    min-width: 30px;
 }
+
+/* ── Action icon ── */
 
 #RuleCardActionIcon {
     border: none;
@@ -125,11 +155,15 @@ QPushButton#BtnDanger:disabled {
     padding: 0;
 }
 
+/* ── Action badge (color applied inline per-card) ── */
+
 #RuleCardAction {
     font-size: 10px;
     font-weight: 700;
     min-width: 46px;
 }
+
+/* ── Main label ── */
 
 #RuleCardLabel {
     color: #c0cce6;
@@ -137,25 +171,32 @@ QPushButton#BtnDanger:disabled {
 }
 
 #RuleCard[cardDisabled="true"] #RuleCardLabel {
-    color: #3d4f6b;
+    color: #2d3f5c;
 }
+
+/* ── Category badge (color + background applied inline per-card) ── */
 
 #RuleCardCategory {
     font-size: 10px;
-    font-weight: 500;
+    font-weight: 600;
 }
+
+/* ── Disabled tag ── */
 
 #RuleCardDisabledTag {
     color: #ef4444;
     font-size: 10px;
     font-style: italic;
     font-weight: 600;
+    background: rgba(239, 68, 68, 0.12);
+    border-radius: 3px;
+    padding: 0px 5px;
 }
 
 /* ── Detail row ── */
 
 #RuleCardDetail {
-    color: #4d6080;
+    color: #3d5070;
     font-size: 10px;
     font-style: italic;
 }
@@ -164,8 +205,8 @@ QPushButton#BtnDanger:disabled {
 
 #RuleCardExtraCount {
     color: #7e8eaf;
-    background: #0e1625;
-    border: 1px solid #1c2845;
+    background: #0a1220;
+    border: 1px solid #162035;
     border-radius: 3px;
     font-size: 9px;
     padding: 1px 4px;
@@ -177,9 +218,9 @@ QPushButton#BtnDanger:disabled {
 #RuleCardFontBadge,
 #RuleCardSoundBadge,
 #RuleCardMinimapBadge {
-    color: #4d6080;
-    background: #0a0e18;
-    border: 1px solid #1c2845;
+    color: #3d5070;
+    background: #080e18;
+    border: 1px solid #131e30;
     border-radius: 3px;
     font-size: 9px;
     padding: 1px 4px;
@@ -202,7 +243,7 @@ QPushButton#BtnDanger:disabled {
 /* ── Empty state ── */
 
 #RuleCardEmptyLabel {
-    color: #253558;
+    color: #1e2e48;
     font-size: 13px;
     padding: 48px;
 }
