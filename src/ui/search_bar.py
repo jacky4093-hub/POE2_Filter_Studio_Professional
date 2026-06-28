@@ -4,7 +4,8 @@ Left-column filter widget distinct from the nav-bar SearchBar.
 Filters Rule Card Browser cards by text.
 
 Signals:
-    search_changed(str, dict)  — emitted on every keystroke / option change
+    search_changed(str, dict)  — emitted after 150 ms debounce on text change,
+                                 or immediately on option-checkbox / clear.
                                  args: (query, options)
     clear_requested()          — emitted when Clear button is pressed
 
@@ -21,12 +22,14 @@ from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLineEdit,
     QPushButton, QLabel, QCheckBox,
 )
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Signal, Qt, QTimer
 
 
 class SearchBarWidget(QWidget):
     search_changed  = Signal(str, dict)
     clear_requested = Signal()
+
+    _DEBOUNCE_MS = 150  # keystroke debounce delay
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -99,6 +102,11 @@ class SearchBarWidget(QWidget):
         opt_row.addStretch()
         root.addLayout(opt_row)
 
+        # --- Debounce timer (text input only) ---
+        self._debounce_timer = QTimer(self)
+        self._debounce_timer.setSingleShot(True)
+        self._debounce_timer.timeout.connect(self._emit_search)
+
         # --- Connections ---
         self._input.textChanged.connect(self._on_text_changed)
         self._clear_btn.clicked.connect(self._on_clear)
@@ -110,18 +118,25 @@ class SearchBarWidget(QWidget):
     # ------------------------------------------------------------------
 
     def _on_text_changed(self, text: str) -> None:
-        self.search_changed.emit(text, self.get_options())
+        # Restart debounce timer on each keystroke; fires once after 150 ms idle
+        self._debounce_timer.start(self._DEBOUNCE_MS)
 
     def _on_option_changed(self) -> None:
-        self.search_changed.emit(self.get_query(), self.get_options())
+        # Option changes (checkbox toggle) fire immediately — no debounce
+        self._debounce_timer.stop()
+        self._emit_search()
 
     def _on_clear(self) -> None:
+        self._debounce_timer.stop()
         self._input.blockSignals(True)
         self._input.clear()
         self._input.blockSignals(False)
         self._count_lbl.setText("")
         self.clear_requested.emit()
-        self.search_changed.emit("", self.get_options())
+        self._emit_search()  # fire immediately with empty query
+
+    def _emit_search(self) -> None:
+        self.search_changed.emit(self.get_query(), self.get_options())
 
     # ------------------------------------------------------------------
     # Public API
@@ -135,6 +150,7 @@ class SearchBarWidget(QWidget):
 
     def clear(self) -> None:
         """Clear input and count WITHOUT emitting search_changed."""
+        self._debounce_timer.stop()
         self._input.blockSignals(True)
         self._input.clear()
         self._input.blockSignals(False)

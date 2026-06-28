@@ -232,11 +232,16 @@ class TestWidgetsUseRegistry:
         assert len(labels) >= 1
 
     def test_tail_card_has_no_action_icon(self, qapp):
-        """__TAIL__ pseudo-rule has no icon (null QIcon guard)."""
+        """__TAIL__ pseudo-rule has no visible icon (null QIcon guard).
+
+        P17.6: the icon label is always created for in-place updates, but
+        must be hidden when the icon registry returns a null icon (__TAIL__).
+        """
         from core.models import FilterRule
         from ui.rule_card_widget import RuleCardWidget
         rule = FilterRule(action="__TAIL__")
         card = RuleCardWidget(0, rule, 1)
         from PySide6.QtWidgets import QLabel
         labels = card.findChildren(QLabel, "RuleCardActionIcon")
-        assert len(labels) == 0
+        visible = [lbl for lbl in labels if not lbl.isHidden()]
+        assert len(visible) == 0, "__TAIL__ must have no visible action icon"

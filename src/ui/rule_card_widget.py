@@ -1,4 +1,4 @@
-"""RuleCardWidget — v3.0.0  (P13.3 Rule Card Browser V2)
+"""RuleCardWidget — v4.0.0  (P17.6 In-Place Update)
 
 Single rule card for the Rule Card Browser.
 
@@ -10,6 +10,12 @@ P13.3 visual improvements (all public API from v2.2.0 preserved):
   - "+N" extra-condition count for non-Class/non-BaseType conditions
   - Disabled rule: CSS property grey (unchanged) + "已停用" tag
 
+P17.6 performance: in-place update
+  - All mutable labels stored as instance attributes
+  - update_rule(rule) refreshes content without destroying the widget
+  - RuleCardBrowser.update_single_card() calls update_rule() instead of
+    destroy-and-recreate, eliminating Qt widget allocation on every edit
+
 Preserved public API:
   - clicked = Signal(int)
   - set_selected(selected: bool)
@@ -20,7 +26,7 @@ Preserved public API:
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QVBoxLayout, QLabel
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QVBoxLayout, QLabel, QWidget
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtGui import QMouseEvent
 
@@ -84,7 +90,11 @@ def _get_first_sound(rule: FilterRule) -> str:
 # ---------------------------------------------------------------------------
 
 class RuleCardWidget(QFrame):
-    """Visual card for one FilterRule.  Emits clicked(real_index) on mouse press."""
+    """Visual card for one FilterRule.  Emits clicked(real_index) on mouse press.
+
+    All mutable labels are stored as instance attributes so that update_rule()
+    can refresh content in-place without destroying and recreating the widget.
+    """
 
     clicked = Signal(int)   # real_index
 
@@ -98,6 +108,7 @@ class RuleCardWidget(QFrame):
         super().__init__(parent)
         self._real_index = real_index
         self._rule = rule
+        self._display_num = display_num
 
         self.setObjectName("RuleCard")
         self.setFrameShape(QFrame.Shape.StyledPanel)
@@ -105,16 +116,15 @@ class RuleCardWidget(QFrame):
         self.setMinimumHeight(56)
         self.setMaximumHeight(92)
 
-        # Dynamic properties used by browser.qss selectors
         self.setProperty("cardSelected", False)
-        self.setProperty("cardHighlight", "none")   # "none" | "match" | "current"
-        if not rule.enabled:
-            self.setProperty("cardDisabled", True)
+        self.setProperty("cardHighlight", "none")
+        self.setProperty("cardDisabled", False)
 
         self._build_ui(display_num)
+        self._refresh_display()   # apply initial rule data
 
     # ------------------------------------------------------------------
-    # UI construction
+    # UI construction — builds skeleton; _refresh_display() fills data
     # ------------------------------------------------------------------
 
     def _build_ui(self, display_num: int) -> None:
@@ -122,15 +132,13 @@ class RuleCardWidget(QFrame):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
 
-        # ── Left colour bar ───────────────────────────────────────────
-        bar = QLabel()
-        bar.setObjectName("RuleCardBar")
-        bar.setFixedWidth(4)
-        bar_color = _ACTION_COLORS.get(self._rule.action, _BAR_DEFAULT)
-        bar.setStyleSheet(f"background: {bar_color}; border: none;")
-        outer.addWidget(bar)
+        # ── Left colour bar ────────────────────────────────────────────
+        self._bar_lbl = QLabel()
+        self._bar_lbl.setObjectName("RuleCardBar")
+        self._bar_lbl.setFixedWidth(4)
+        outer.addWidget(self._bar_lbl)
 
-        # ── Body ─────────────────────────────────────────────────────
+        # ── Body ───────────────────────────────────────────────────────
         body = QVBoxLayout()
         body.setContentsMargins(8, 4, 8, 4)
         body.setSpacing(2)
@@ -142,127 +150,188 @@ class RuleCardWidget(QFrame):
         outer.addLayout(body)
 
     def _build_main_row(self, body: QVBoxLayout, display_num: int) -> None:
-        """Row 1: [#N] ACTION_BADGE  main-label"""
         row = QHBoxLayout()
         row.setSpacing(5)
 
-        # Number
-        num_lbl = QLabel(f"[{display_num}]")
-        num_lbl.setObjectName("RuleCardNum")
-        row.addWidget(num_lbl)
+        self._num_lbl = QLabel(f"[{display_num}]")
+        self._num_lbl.setObjectName("RuleCardNum")
+        row.addWidget(self._num_lbl)
 
-        # Action icon (via IconRegistry — no hardcoded paths)
-        action_icon = IconRegistry.get_rule_action_icon(self._rule.action)
-        if not action_icon.isNull():
-            icon_lbl = QLabel()
-            icon_lbl.setObjectName("RuleCardActionIcon")
-            icon_lbl.setFixedSize(12, 12)
-            icon_lbl.setPixmap(action_icon.pixmap(12, 12))
-            row.addWidget(icon_lbl)
+        self._action_icon_lbl = QLabel()
+        self._action_icon_lbl.setObjectName("RuleCardActionIcon")
+        self._action_icon_lbl.setFixedSize(12, 12)
+        row.addWidget(self._action_icon_lbl)
 
-        # Action badge (background accent)
-        action_text = self._rule.action if self._rule.action != "__TAIL__" else "—"
-        action_lbl = QLabel(action_text)
-        action_lbl.setObjectName("RuleCardAction")
-        action_color = _ACTION_COLORS.get(self._rule.action, _BAR_DEFAULT)
-        action_lbl.setStyleSheet(
-            f"color: {action_color}; font-weight: 600; font-size: 10px;"
-            f"background: {action_color}1a;"
-            "border-radius: 2px; padding: 1px 5px;"
-        )
-        row.addWidget(action_lbl)
+        self._action_badge_lbl = QLabel()
+        self._action_badge_lbl.setObjectName("RuleCardAction")
+        row.addWidget(self._action_badge_lbl)
 
-        # Main label
-        label_lbl = QLabel(_make_label(self._rule))
-        label_lbl.setObjectName("RuleCardLabel")
-        label_lbl.setWordWrap(False)
-        row.addWidget(label_lbl, stretch=1)
+        self._main_lbl = QLabel()
+        self._main_lbl.setObjectName("RuleCardLabel")
+        self._main_lbl.setWordWrap(False)
+        row.addWidget(self._main_lbl, stretch=1)
 
         body.addLayout(row)
 
     def _build_detail_row(self, body: QVBoxLayout) -> None:
-        """Row 2 (optional): BaseType value  |  +N extra conditions.
+        """Always build the row; show/hide individual labels in _refresh_display."""
+        self._detail_container = QWidget()
+        self._detail_container.setObjectName("RuleCardDetailRow")
+        detail_layout = QHBoxLayout(self._detail_container)
+        detail_layout.setContentsMargins(0, 0, 0, 0)
+        detail_layout.setSpacing(4)
 
-        Only added to the layout if there is at least one piece of info to show.
-        """
-        first_key = self._rule.conditions[0][0] if self._rule.conditions else ""
+        self._basetype_detail_lbl = QLabel()
+        self._basetype_detail_lbl.setObjectName("RuleCardDetail")
+        detail_layout.addWidget(self._basetype_detail_lbl)
 
-        # BaseType — only shown when it's NOT already the first-row condition
+        self._extra_count_lbl = QLabel()
+        self._extra_count_lbl.setObjectName("RuleCardExtraCount")
+        detail_layout.addWidget(self._extra_count_lbl)
+
+        detail_layout.addStretch()
+        body.addWidget(self._detail_container)
+
+    def _build_badge_row(self, body: QVBoxLayout) -> None:
+        """Always build all badge labels; show/hide in _refresh_display."""
+        row = QHBoxLayout()
+        row.setSpacing(4)
+
+        self._cat_badge_lbl = QLabel()
+        self._cat_badge_lbl.setObjectName("RuleCardCategory")
+        row.addWidget(self._cat_badge_lbl)
+
+        self._fs_badge_lbl = QLabel()
+        self._fs_badge_lbl.setObjectName("RuleCardFontBadge")
+        row.addWidget(self._fs_badge_lbl)
+
+        self._sound_badge_lbl = QLabel("♪")
+        self._sound_badge_lbl.setObjectName("RuleCardSoundBadge")
+        row.addWidget(self._sound_badge_lbl)
+
+        self._minimap_badge_lbl = QLabel("🗺")
+        self._minimap_badge_lbl.setObjectName("RuleCardMinimapBadge")
+        row.addWidget(self._minimap_badge_lbl)
+
+        self._disabled_tag_lbl = QLabel("已停用")
+        self._disabled_tag_lbl.setObjectName("RuleCardDisabledTag")
+        row.addWidget(self._disabled_tag_lbl)
+
+        row.addStretch()
+        body.addLayout(row)
+
+    # ------------------------------------------------------------------
+    # Display refresh — pure data-to-labels mapping, called on init
+    # and from update_rule()
+    # ------------------------------------------------------------------
+
+    def _refresh_display(self) -> None:
+        """Apply all rule data to UI labels.  Called on construction and by update_rule()."""
+        rule = self._rule
+
+        # ── Colour bar ─────────────────────────────────────────────────
+        bar_color = _ACTION_COLORS.get(rule.action, _BAR_DEFAULT)
+        self._bar_lbl.setStyleSheet(f"background: {bar_color}; border: none;")
+
+        # ── Action icon ────────────────────────────────────────────────
+        action_icon = IconRegistry.get_rule_action_icon(rule.action)
+        if not action_icon.isNull():
+            self._action_icon_lbl.setPixmap(action_icon.pixmap(12, 12))
+            self._action_icon_lbl.show()
+        else:
+            self._action_icon_lbl.hide()
+
+        # ── Action badge ───────────────────────────────────────────────
+        action_text = rule.action if rule.action != "__TAIL__" else "—"
+        action_color = _ACTION_COLORS.get(rule.action, _BAR_DEFAULT)
+        self._action_badge_lbl.setText(action_text)
+        self._action_badge_lbl.setStyleSheet(
+            f"color: {action_color}; font-weight: 600; font-size: 10px;"
+            f"background: {action_color}1a;"
+            "border-radius: 2px; padding: 1px 5px;"
+        )
+
+        # ── Main label ─────────────────────────────────────────────────
+        self._main_lbl.setText(_make_label(rule))
+
+        # ── Detail row ─────────────────────────────────────────────────
+        first_key = rule.conditions[0][0] if rule.conditions else ""
         basetype_val = ""
         if first_key != "BaseType":
-            for k, v in self._rule.conditions:
+            for k, v in rule.conditions:
                 if k == "BaseType":
                     raw = v.strip('"').strip("'").strip()
                     basetype_val = (raw[:30] + "…") if len(raw) > 33 else raw
                     break
 
-        # Extra conditions: not Class, not BaseType
-        extra_count = sum(
-            1 for k, _ in self._rule.conditions if k not in _MANAGED_COND_KEYS
-        )
-
-        if not basetype_val and extra_count == 0:
-            return   # nothing to show — skip this row entirely
-
-        row = QHBoxLayout()
-        row.setSpacing(4)
-
         if basetype_val:
-            detail_lbl = QLabel(f"BaseType: {basetype_val}")
-            detail_lbl.setObjectName("RuleCardDetail")
-            row.addWidget(detail_lbl)
+            self._basetype_detail_lbl.setText(f"BaseType: {basetype_val}")
+            self._basetype_detail_lbl.show()
+        else:
+            self._basetype_detail_lbl.hide()
 
+        extra_count = sum(1 for k, _ in rule.conditions if k not in _MANAGED_COND_KEYS)
         if extra_count > 0:
-            extra_lbl = QLabel(f"+{extra_count}")
-            extra_lbl.setObjectName("RuleCardExtraCount")
-            row.addWidget(extra_lbl)
+            self._extra_count_lbl.setText(f"+{extra_count}")
+            self._extra_count_lbl.show()
+        else:
+            self._extra_count_lbl.hide()
 
-        row.addStretch()
-        body.addLayout(row)
+        has_detail = bool(basetype_val) or extra_count > 0
+        self._detail_container.setVisible(has_detail)
 
-    def _build_badge_row(self, body: QVBoxLayout) -> None:
-        """Row 3: Category dot  FontSize  Sound  Minimap  Disabled."""
-        row = QHBoxLayout()
-        row.setSpacing(4)
-
-        # Category dot + label
-        cat = classify_rule(self._rule)
+        # ── Category badge ─────────────────────────────────────────────
+        cat = classify_rule(rule)
         cat_label = CATEGORY_LABELS.get(cat, "")
         cat_color = CATEGORY_COLORS.get(cat, "#64748b")
         if cat_label:
-            cat_lbl = QLabel(f"● {cat_label}")
-            cat_lbl.setObjectName("RuleCardCategory")
-            cat_lbl.setStyleSheet(f"color: {cat_color};")
-            row.addWidget(cat_lbl)
+            self._cat_badge_lbl.setText(f"● {cat_label}")
+            self._cat_badge_lbl.setStyleSheet(f"color: {cat_color};")
+            self._cat_badge_lbl.show()
+        else:
+            self._cat_badge_lbl.hide()
 
-        # FontSize badge
-        fontsize = _get_action_val(self._rule, "SetFontSize")
+        # ── FontSize badge ─────────────────────────────────────────────
+        fontsize = _get_action_val(rule, "SetFontSize")
         if fontsize:
-            fs_lbl = QLabel(f"Fs:{fontsize}")
-            fs_lbl.setObjectName("RuleCardFontBadge")
-            row.addWidget(fs_lbl)
+            self._fs_badge_lbl.setText(f"Fs:{fontsize}")
+            self._fs_badge_lbl.show()
+        else:
+            self._fs_badge_lbl.hide()
 
-        # Sound badge
-        sound = _get_first_sound(self._rule)
-        if sound:
-            sound_lbl = QLabel("♪")
-            sound_lbl.setObjectName("RuleCardSoundBadge")
-            row.addWidget(sound_lbl)
+        # ── Sound / Minimap badges ─────────────────────────────────────
+        self._sound_badge_lbl.setVisible(bool(_get_first_sound(rule)))
+        self._minimap_badge_lbl.setVisible(bool(_get_action_val(rule, "MinimapIcon")))
 
-        # Minimap badge
-        if _get_action_val(self._rule, "MinimapIcon"):
-            map_lbl = QLabel("🗺")
-            map_lbl.setObjectName("RuleCardMinimapBadge")
-            row.addWidget(map_lbl)
+        # ── Disabled tag ───────────────────────────────────────────────
+        self._disabled_tag_lbl.setVisible(not rule.enabled)
 
-        # Disabled tag
-        if not self._rule.enabled:
-            dis_lbl = QLabel("已停用")
-            dis_lbl.setObjectName("RuleCardDisabledTag")
-            row.addWidget(dis_lbl)
+        # ── cardDisabled Qt property ───────────────────────────────────
+        self.setProperty("cardDisabled", not rule.enabled)
 
-        row.addStretch()
-        body.addLayout(row)
+    # ------------------------------------------------------------------
+    # In-place update — the key P17.6 performance method
+    # ------------------------------------------------------------------
+
+    def update_display_num(self, num: int) -> None:
+        """Update the display number label in-place (used by pool renumbering)."""
+        self._display_num = num
+        self._num_lbl.setText(f"[{num}]")
+
+    def update_rule(self, rule: FilterRule) -> None:
+        """Update card content in-place without destroying the widget.
+
+        Avoids Qt widget allocation/deallocation on every field edit.
+        Only repolishes the stylesheet when the enabled state changes
+        (which affects the cardDisabled Qt property used by QSS selectors).
+        """
+        was_enabled = self._rule.enabled
+        self._rule = rule
+        self._refresh_display()
+        if rule.enabled != was_enabled:
+            self._repolish()
+        else:
+            self.update()
 
     # ------------------------------------------------------------------
     # Public state API

@@ -44,6 +44,17 @@ def _find(card: RuleCardWidget, name: str) -> QLabel | None:
     )
 
 
+def _is_absent(card: RuleCardWidget, name: str) -> bool:
+    """Return True if the named label does not exist OR is hidden.
+
+    P17.6 changed badge labels from conditionally-created to always-created
+    (hidden when not applicable).  Use this helper instead of `_find() is None`
+    so tests work with both the old (no widget) and new (widget hidden) designs.
+    """
+    lbl = _find(card, name)
+    return lbl is None or lbl.isHidden()
+
+
 def _rule(**kw) -> FilterRule:
     return FilterRule(**{"action": "Show", **kw})
 
@@ -105,19 +116,20 @@ class TestBadgeRendering:
         assert "Divine Orb" in lbl.text()
 
     def test_basetype_not_duplicated_when_first_condition(self, qapp):
-        # BaseType IS the first condition — row 1 already shows it
+        # BaseType IS the first condition — detail label must be hidden/absent
         rule = FilterRule(action="Show", conditions=[
             ["BaseType", '"Divine Orb"'],
         ])
         card = RuleCardWidget(0, rule, 1)
-        lbl = _find(card, "RuleCardDetail")
-        assert lbl is None   # no detail row when already in row 1
+        assert _is_absent(card, "RuleCardDetail"), (
+            "detail label must be absent when BaseType is already in the main row"
+        )
 
     def test_no_detail_row_when_only_class(self, qapp):
         rule = FilterRule(action="Show", conditions=[["Class", '"Currency"']])
         card = RuleCardWidget(0, rule, 1)
-        assert _find(card, "RuleCardDetail") is None
-        assert _find(card, "RuleCardExtraCount") is None
+        assert _is_absent(card, "RuleCardDetail")
+        assert _is_absent(card, "RuleCardExtraCount")
 
     # ── FontSize badge ─────────────────────────────────────────────────
 
@@ -131,7 +143,7 @@ class TestBadgeRendering:
     def test_fontsize_badge_absent_when_no_fontsize(self, qapp):
         rule = FilterRule(action="Show")
         card = RuleCardWidget(0, rule, 1)
-        assert _find(card, "RuleCardFontBadge") is None
+        assert _is_absent(card, "RuleCardFontBadge")
 
     def test_fontsize_badge_text_contains_value(self, qapp):
         rule = FilterRule(action="Show", actions=[["SetFontSize", "20"]])
@@ -156,7 +168,7 @@ class TestBadgeRendering:
     def test_sound_badge_absent_when_no_sound(self, qapp):
         rule = FilterRule(action="Show")
         card = RuleCardWidget(0, rule, 1)
-        assert _find(card, "RuleCardSoundBadge") is None
+        assert _is_absent(card, "RuleCardSoundBadge")
 
     # ── Minimap badge ──────────────────────────────────────────────────
 
@@ -168,7 +180,7 @@ class TestBadgeRendering:
     def test_minimap_badge_absent_when_no_minimap(self, qapp):
         rule = FilterRule(action="Show")
         card = RuleCardWidget(0, rule, 1)
-        assert _find(card, "RuleCardMinimapBadge") is None
+        assert _is_absent(card, "RuleCardMinimapBadge")
 
     # ── Combined badges ────────────────────────────────────────────────
 
@@ -211,7 +223,7 @@ class TestDisabledRendering:
     def test_enabled_no_disabled_tag(self, qapp):
         rule = FilterRule(action="Show", enabled=True)
         card = RuleCardWidget(0, rule, 1)
-        assert _find(card, "RuleCardDisabledTag") is None
+        assert _is_absent(card, "RuleCardDisabledTag")
 
     def test_disabled_hide_rule_still_works(self, qapp):
         """A disabled Hide rule must still show the correct action badge."""
@@ -233,7 +245,7 @@ class TestUnknownConditionCount:
     def test_no_extra_badge_when_only_class(self, qapp):
         rule = FilterRule(action="Show", conditions=[["Class", '"Currency"']])
         card = RuleCardWidget(0, rule, 1)
-        assert _find(card, "RuleCardExtraCount") is None
+        assert _is_absent(card, "RuleCardExtraCount")
 
     def test_no_extra_badge_when_class_and_basetype_only(self, qapp):
         rule = FilterRule(action="Show", conditions=[
@@ -241,7 +253,7 @@ class TestUnknownConditionCount:
             ["BaseType", '"Divine Orb"'],
         ])
         card = RuleCardWidget(0, rule, 1)
-        assert _find(card, "RuleCardExtraCount") is None
+        assert _is_absent(card, "RuleCardExtraCount")
 
     def test_one_extra_condition(self, qapp):
         rule = FilterRule(action="Show", conditions=[
@@ -279,7 +291,7 @@ class TestUnknownConditionCount:
     def test_no_conditions_no_extra_badge(self, qapp):
         rule = FilterRule(action="Show")
         card = RuleCardWidget(0, rule, 1)
-        assert _find(card, "RuleCardExtraCount") is None
+        assert _is_absent(card, "RuleCardExtraCount")
 
 
 # ---------------------------------------------------------------------------

@@ -1,52 +1,72 @@
 /* ============================================================
-   POE2 Filter Studio — v3.0.0  P15.2 Premium Theme
-   Main window shell chrome
+   POE2 Filter Studio — v4.0.0  P18.1 V4 Shell
+   Main window shell chrome: content shell, 4 columns, status bar
    ============================================================ */
 
-#NavBarPlaceholder {
-    background-color: #0d1117;
-    border-bottom: 1px solid #1c2845;
-    min-height: 46px;
-    max-height: 46px;
-}
-
-#NavBarBrand {
-    color: #dde4f0;
-    font-size: 15px;
-    font-weight: bold;
-    padding-left: 6px;
-    letter-spacing: 0.3px;
-}
-
-#CategoryPlaceholder {
-    background-color: #0d1117;
-    border: 1px solid #1c2845;
-    border-radius: 5px;
-    color: #7e8eaf;
-    padding: 12px 8px;
-}
-
-#CategoryPlaceholderTitle {
-    color: #dde4f0;
-    font-weight: bold;
-    font-size: 13px;
-}
-
-#CategoryPlaceholderHint {
-    color: #3d4f6b;
-    font-size: 12px;
-}
-
-#StatusBarPlaceholder {
-    background-color: #07090f;
-    border-top: 1px solid #1c2845;
-    min-height: 24px;
-    max-height: 24px;
-    color: #7e8eaf;
-    font-size: 11px;
-    padding: 2px 10px;
-}
+/* ── Content shell ── */
 
 #ContentShell {
     background-color: #07090f;
+}
+
+/* ── Four-column containers ── */
+
+#ColCategory {
+    background-color: #0d1117;
+    border-right: 1px solid #1c2845;
+}
+
+#ColBrowser {
+    background-color: #0a0e18;
+    border-right: 1px solid #1c2845;
+}
+
+#ColPreview {
+    background-color: #07090f;
+    border-left: 1px solid #1c2845;
+}
+
+/* ── Rule Browser header bar ── */
+
+#RuleBrowserHeader {
+    background-color: #111827;
+    border-bottom: 1px solid #1c2845;
+    min-height: 38px;
+    max-height: 38px;
+}
+
+#RuleCountLabel {
+    color: #dde4f0;
+    font-weight: bold;
+    font-size: 12px;
+    background: transparent;
+}
+
+/* ── Status Bar V4 ── */
+
+#StatusBarV4 {
+    background-color: #07090f;
+    border-top: 1px solid #1c2845;
+    min-height: 26px;
+    max-height: 26px;
+}
+
+#StatusFileInfo {
+    color: #7e8eaf;
+    font-size: 11px;
+    background: transparent;
+}
+
+#StatusRuleCount {
+    color: #64748b;
+    font-size: 11px;
+    background: transparent;
+    padding: 0 4px;
+}
+
+#StatusValidationSummary {
+    color: #64748b;
+    font-size: 11px;
+    background: transparent;
+    padding: 0 6px;
 }

@@ -106,9 +106,9 @@ class TestMainWindowP10Integration:
         # Emit search_changed signal manually
         w.filter_search_bar.search_changed.emit("Currency", {})
         
-        # Should filter cards
-        assert 0 in w.rule_card_browser._cards
-        assert 1 not in w.rule_card_browser._cards
+        # Should filter cards (P17.7: cards stay in _cards pool but are hidden)
+        assert w.rule_card_browser.is_rule_visible(0)
+        assert not w.rule_card_browser.is_rule_visible(1)
 
     def test_search_bar_clear_button_handler(self, qapp):
         """Clicking clear button should clear search filter."""
@@ -183,8 +183,9 @@ class TestMainWindowP10Integration:
         assert w.rule_card_browser._selected_real == 0
         
         # Search that excludes the selected rule
+        # P17.7: card stays in _cards pool but hidden; selection cleared
         w.filter_search_bar.search_changed.emit("Gem", {})
-        assert 0 not in w.rule_card_browser._cards
+        assert not w.rule_card_browser.is_rule_visible(0)
         assert w.rule_card_browser._selected_real == -1
         # Should also clear the editor
         assert w._selected_index == -1

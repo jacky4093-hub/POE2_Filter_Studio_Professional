@@ -1,0 +1,115 @@
+/* ============================================================
+   NavigationBarV4 — P18.1 V4 Shell
+   Top navigation bar styles
+   ============================================================ */
+
+#NavigationBarV4 {
+    background-color: #0d1117;
+    border-bottom: 1px solid #1c2845;
+    min-height: 48px;
+    max-height: 48px;
+}
+
+/* ── Logo icon ── */
+
+#NavLogoIcon {
+    font-size: 20px;
+    background: transparent;
+    padding: 0 2px;
+}
+
+/* ── Brand title ── */
+
+#NavBrandTitle {
+    color: #dde4f0;
+    font-size: 14px;
+    font-weight: bold;
+    background: transparent;
+    letter-spacing: 0.2px;
+}
+
+/* ── Vertical separator ── */
+
+#NavSeparator {
+    background-color: #1c2845;
+    max-width: 1px;
+    min-height: 22px;
+    max-height: 22px;
+    margin: 0 4px;
+}
+
+/* ── File-operation buttons ── */
+
+#NavBtnFile {
+    background-color: #161f30;
+    color: #c8d4e8;
+    border: 1px solid #253558;
+    border-radius: 5px;
+    font-size: 12px;
+    padding: 4px 12px;
+    min-height: 30px;
+}
+
+#NavBtnFile:hover {
+    background-color: #1e2e48;
+    border-color: #3558a0;
+    color: #eef2fb;
+}
+
+#NavBtnFile:pressed {
+    background-color: #6d31d4;
+    border-color: #7c3aed;
+    color: #ffffff;
+}
+
+/* ── Validation chip ── */
+
+#NavValidationChip {
+    border-radius: 5px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: bold;
+    min-width: 140px;
+    min-height: 28px;
+    max-height: 28px;
+}
+
+#NavValidationChip[validationState="idle"] {
+    background-color: #111827;
+    color: #64748b;
+    border: 1px solid #1c2845;
+}
+
+#NavValidationChip[validationState="pass"] {
+    background-color: #0a2015;
+    color: #4ade80;
+    border: 1px solid #1a5c2e;
+}
+
+#NavValidationChip[validationState="fail"] {
+    background-color: #200a0a;
+    color: #f87171;
+    border: 1px solid #5c1a1a;
+}
+
+/* ── Settings button ── */
+
+#NavSettingsBtn {
+    background-color: transparent;
+    color: #7e8eaf;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    font-size: 15px;
+    padding: 2px;
+}
+
+#NavSettingsBtn:hover {
+    background-color: #1a2640;
+    color: #dde4f0;
+    border-color: #253558;
+}
+
+#NavSettingsBtn:pressed {
+    background-color: #253558;
+    color: #ffffff;
+}

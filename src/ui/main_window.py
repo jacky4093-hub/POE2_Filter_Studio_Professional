@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
     QStackedWidget, QFileDialog, QMessageBox, QLabel,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 
 from core.document import FilterDocument
@@ -35,6 +35,7 @@ from ui.preview_panel import PreviewPanel
 from ui.category_sidebar import CategorySidebarWidget
 from ui.validation_panel import ValidationPanel
 from ui.save_warning_dialog import SaveWarningDialog
+from ui.navigation_bar import NavigationBarV4
 from core.validator import validate_document, ValidationSeverity
 from core.quick_fix import get_quick_fixes, apply_quick_fix
 from presenters.status_presenter import StatusPresenter
@@ -77,6 +78,12 @@ class MainWindow(QMainWindow):
         self._build_toolbar()
         self._build_shortcuts()
 
+        # Debounce timer — fires _on_deferred_post_edit 300 ms after last field edit.
+        # Keeps per-keystroke cost low: validate + category counts run once per pause.
+        self._validation_timer = QTimer(self)
+        self._validation_timer.setSingleShot(True)
+        self._validation_timer.timeout.connect(self._on_deferred_post_edit)
+
         # Restore workspace state (geometry, splitter, section states)
         self._restore_workspace_state()
         self._restore_section_states()
@@ -96,115 +103,167 @@ class MainWindow(QMainWindow):
         self.welcome_screen = WelcomeScreen()
         self._main_stack.addWidget(self.welcome_screen)
 
-        # Page 1: Editor shell
+        # Page 1: Editor shell — V4 layout
         central = QWidget()
         central.setObjectName("ContentShell")
         self._main_stack.addWidget(central)
 
         v = QVBoxLayout(central)
-        v.setContentsMargins(4, 4, 4, 2)
-        v.setSpacing(2)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(0)
 
-        # v2 shell — NavBar placeholder (brand + existing search bar)
-        nav_bar = QWidget()
-        nav_bar.setObjectName("NavBarPlaceholder")
-        nav_layout = QHBoxLayout(nav_bar)
-        nav_layout.setContentsMargins(8, 4, 8, 4)
-        nav_layout.setSpacing(12)
+        # ── Navigation Bar V4 ────────────────────────────────────────────
+        self.search_bar = SearchBar()      # navigation search — embedded in nav bar
+        self.nav_bar = NavigationBarV4(search_bar=self.search_bar)
+        v.addWidget(self.nav_bar)
 
-        brand_lbl = QLabel("POE2 Filter Studio")
-        brand_lbl.setObjectName("NavBarBrand")
-        nav_layout.addWidget(brand_lbl)
-
-        self.search_bar = SearchBar()
-        nav_layout.addWidget(self.search_bar, stretch=1)
-
-        v.addWidget(nav_bar)
-
+        # ── Four-column main splitter ────────────────────────────────────
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        self.category_sidebar = CategorySidebarWidget()
-
+        self.category_sidebar     = CategorySidebarWidget()
         self.rule_actions_toolbar = RuleActionsToolbar()
+        self.filter_search_bar    = SearchBarWidget()
+        self.rule_card_browser    = RuleCardBrowser()
+        self.rule_detail_editor   = RuleDetailEditor()
+        self.preview_panel        = PreviewPanel()
+        self.validation_panel     = ValidationPanel()
 
-        self.filter_search_bar = SearchBarWidget()
+        # ── Panel 1: Category Sidebar ────────────────────────────────────
+        col_category = QWidget()
+        col_category.setObjectName("ColCategory")
+        col_category.setMinimumWidth(160)
+        col_category.setMaximumWidth(240)
+        col_cat_layout = QVBoxLayout(col_category)
+        col_cat_layout.setContentsMargins(0, 0, 0, 0)
+        col_cat_layout.setSpacing(0)
+        col_cat_layout.addWidget(self.category_sidebar, stretch=1)
 
-        self.rule_card_browser = RuleCardBrowser()
+        # ── Panel 2: Rule Browser ────────────────────────────────────────
+        col_browser = QWidget()
+        col_browser.setObjectName("ColBrowser")
+        col_browser.setMinimumWidth(200)
+        col_browser.setMaximumWidth(420)
+        col_browser_layout = QVBoxLayout(col_browser)
+        col_browser_layout.setContentsMargins(0, 0, 0, 0)
+        col_browser_layout.setSpacing(0)
 
-        self.rule_detail_editor = RuleDetailEditor()
+        # Browser header — "規則列表 (N)"
+        self._rule_browser_hdr = QWidget()
+        self._rule_browser_hdr.setObjectName("RuleBrowserHeader")
+        hdr_layout = QHBoxLayout(self._rule_browser_hdr)
+        hdr_layout.setContentsMargins(10, 0, 10, 0)
+        hdr_layout.setSpacing(0)
+        self._rule_count_lbl = QLabel("規則列表")
+        self._rule_count_lbl.setObjectName("RuleCountLabel")
+        hdr_layout.addWidget(self._rule_count_lbl)
+        hdr_layout.addStretch()
 
-        self.preview_panel = PreviewPanel()
-        self.preview_panel.setMinimumWidth(180)
-        self.preview_panel.setMaximumWidth(340)
+        col_browser_layout.addWidget(self._rule_browser_hdr)
+        col_browser_layout.addWidget(self.rule_actions_toolbar)
+        col_browser_layout.addWidget(self.filter_search_bar)
+        col_browser_layout.addWidget(self.rule_card_browser, stretch=1)
 
-        self.validation_panel = ValidationPanel()
+        # ── Panel 3: Rule Editor (added directly to splitter) ────────────
 
-        # Left column: sidebar → toolbar → search bar → card browser
-        left_col = QWidget()
-        left_col.setObjectName("LeftColumn")
-        left_col.setMinimumWidth(200)
-        left_col.setMaximumWidth(360)
-        lc_layout = QVBoxLayout(left_col)
-        lc_layout.setContentsMargins(0, 0, 0, 0)
-        lc_layout.setSpacing(0)
-        lc_layout.addWidget(self.category_sidebar)
-        lc_layout.addWidget(self.rule_actions_toolbar)
-        lc_layout.addWidget(self.filter_search_bar)
-        lc_layout.addWidget(self.rule_card_browser, stretch=1)
+        # ── Panel 4: Preview Column ──────────────────────────────────────
+        col_preview = QWidget()
+        col_preview.setObjectName("ColPreview")
+        col_preview.setMinimumWidth(180)
+        col_preview.setMaximumWidth(360)
+        col_prev_layout = QVBoxLayout(col_preview)
+        col_prev_layout.setContentsMargins(0, 0, 0, 0)
+        col_prev_layout.setSpacing(0)
+        col_prev_layout.addWidget(self.preview_panel, stretch=1)
 
-        self._splitter.addWidget(left_col)
+        # Assemble 4-panel splitter
+        self._splitter.addWidget(col_category)
+        self._splitter.addWidget(col_browser)
         self._splitter.addWidget(self.rule_detail_editor)
-        self._splitter.addWidget(self.preview_panel)
+        self._splitter.addWidget(col_preview)
         self._splitter.setStretchFactor(0, 0)
-        self._splitter.setStretchFactor(1, 3)
-        self._splitter.setStretchFactor(2, 1)
-        self._splitter.setSizes([280, 660, 280])
+        self._splitter.setStretchFactor(1, 0)
+        self._splitter.setStretchFactor(2, 3)
+        self._splitter.setStretchFactor(3, 1)
+        self._splitter.setSizes([190, 300, 580, 290])
+
         v.addWidget(self._splitter, stretch=1)
         v.addWidget(self.validation_panel)
 
-        # v2 shell — bottom status placeholder (replaces QStatusBar content area)
+        # ── Status Bar V4 ────────────────────────────────────────────────
         status_shell = QWidget()
-        status_shell.setObjectName("StatusBarPlaceholder")
+        status_shell.setObjectName("StatusBarV4")
         status_layout = QHBoxLayout(status_shell)
-        status_layout.setContentsMargins(8, 0, 8, 0)
+        status_layout.setContentsMargins(10, 0, 10, 0)
+        status_layout.setSpacing(0)
+
         self._status_lbl = QLabel()
+        self._status_lbl.setObjectName("StatusFileInfo")
         status_layout.addWidget(self._status_lbl)
+
         status_layout.addStretch()
+
+        self._status_rule_count_lbl = QLabel()
+        self._status_rule_count_lbl.setObjectName("StatusRuleCount")
+        status_layout.addWidget(self._status_rule_count_lbl)
+
+        status_layout.addSpacing(16)
+
+        self._status_validation_lbl = QLabel()
+        self._status_validation_lbl.setObjectName("StatusValidationSummary")
+        status_layout.addWidget(self._status_validation_lbl)
+
         v.addWidget(status_shell)
 
+        # ── Signal Connections ───────────────────────────────────────────
+
+        # NavigationBarV4 → file operations
+        self.nav_bar.new_requested.connect(self.new_file)
+        self.nav_bar.open_requested.connect(self.open_file)
+        self.nav_bar.import_backup_requested.connect(self._on_import_backup)
+        self.nav_bar.save_requested.connect(self.save_file)
+        self.nav_bar.save_as_requested.connect(self.save_file_as)
+        self.nav_bar.export_requested.connect(self.save_file_as)
+        self.nav_bar.settings_requested.connect(self.open_preferences)
+
+        # Rule browser
         self.rule_card_browser.selected_rule_changed.connect(self._on_rule_selected)
         # P14.1: wizard now handles all browser-originated adds via add_rule_from_wizard.
-        # add_rule_requested is still emitted by the browser (for notification) but not
-        # connected here — _on_add_rule_from_template handles insertion from the browser.
         self.rule_card_browser.add_rule_from_wizard.connect(self._on_add_rule_from_template)
         self.rule_card_browser.delete_rule_requested.connect(self._on_delete_rule)
         self.rule_card_browser.copy_rule_requested.connect(self._on_copy_rule)
         self.rule_card_browser.move_rule_requested.connect(self._on_move_rule)
+
+        # Rule editor
         self.rule_detail_editor.rule_changed.connect(self._on_detail_rule_changed)
+
+        # Validation panel
         self.validation_panel.issue_clicked.connect(self._on_validation_issue_clicked)
         self.validation_panel.fix_requested.connect(self._on_quick_fix_requested)
 
+        # Rule actions toolbar
         self.rule_actions_toolbar.new_requested.connect(self._on_add_rule)
         self.rule_actions_toolbar.delete_requested.connect(self._on_toolbar_delete)
         self.rule_actions_toolbar.duplicate_requested.connect(self._on_toolbar_duplicate)
         self.rule_actions_toolbar.move_up_requested.connect(self._on_toolbar_move_up)
         self.rule_actions_toolbar.move_down_requested.connect(self._on_toolbar_move_down)
 
+        # Navigation search (SearchBar embedded in nav_bar)
         self.search_bar.search_changed.connect(self._on_search_changed)
         self.search_bar.next_requested.connect(self._on_search_next)
         self.search_bar.prev_requested.connect(self._on_search_prev)
 
+        # Category sidebar
         self.category_sidebar.category_selected.connect(self._on_category_selected)
 
+        # Filter search bar (quick filter inside browser panel)
         self.filter_search_bar.search_changed.connect(self._on_filter_search_changed)
         self.filter_search_bar.clear_requested.connect(self._on_filter_search_clear)
 
-        # Welcome screen signals
+        # Welcome screen
         self.welcome_screen.open_requested.connect(self.open_file)
         self.welcome_screen.new_requested.connect(self.new_file)
         self.welcome_screen.recent_file_requested.connect(self.load_file)
 
-        # Start on welcome screen; _try_startup_restore() may switch to editor
         self._main_stack.setCurrentIndex(0)
 
     def _build_menus(self):
@@ -292,24 +351,11 @@ class MainWindow(QMainWindow):
         dlg.exec()
 
     def _build_toolbar(self):
+        # NavigationBarV4 surfaces file operations visually; keep the QToolBar
+        # hidden so keyboard shortcuts and _tb_undo/_tb_redo still work.
         tb = self.addToolBar("工具列")
         tb.setMovable(False)
-
-        a = QAction("開啟", self)
-        a.triggered.connect(self.open_file)
-        tb.addAction(a)
-
-        a = QAction("儲存", self)
-        a.triggered.connect(self.save_file)
-        tb.addAction(a)
-
-        tb.addSeparator()
-
-        a = QAction("新增規則", self)
-        a.triggered.connect(self._on_add_rule)
-        tb.addAction(a)
-
-        tb.addSeparator()
+        tb.setVisible(False)
 
         self._tb_undo = QAction("復原", self)
         self._tb_undo.setEnabled(False)
@@ -660,7 +706,12 @@ class MainWindow(QMainWindow):
         self._load_rule_to_ui(real_index)
 
     def _on_detail_rule_changed(self, index: int, updated_rule: FilterRule) -> None:
-        """Handle rule_changed(index, updated_rule) from RuleDetailEditor."""
+        """Handle rule_changed(index, updated_rule) from RuleDetailEditor.
+
+        Fast path: only the current card is swapped and title/status bar are
+        refreshed immediately.  Validation and category counts are deferred via
+        a 300 ms debounce timer so per-keystroke cost stays low.
+        """
         if not (0 <= index < len(self._doc.rules)):
             return
 
@@ -671,14 +722,37 @@ class MainWindow(QMainWindow):
         cmd = UpdateRuleCommand(self._doc, index, old_rule, updated_rule)
         self._doc.execute(cmd)
 
-        self._editing_snapshot = copy.deepcopy(self._doc.rules[index])
-        self.preview_panel.show_rule(self._doc.rules[index])
+        # doc.rules[index] was replaced (not mutated) by execute(); safe to reference directly.
+        self._editing_snapshot = self._doc.rules[index]
 
-        self._refresh_search()
-        self._refresh_status()
+        # Immediate lightweight updates
+        self.preview_panel.show_rule(self._doc.rules[index])
+        # Only refresh nav-search results when a query is active (P17.8 guard)
+        if self.search_bar.current_text().strip():
+            self._refresh_search()
+        self._refresh_status_fast()          # title + status bar, no validate
         self._refresh_undo_actions()
+        self.rule_card_browser.update_single_card(index, updated_rule)
+
+        # Defer expensive work — restart timer so it fires 300 ms after LAST edit
+        self._validation_timer.start(300)
+
+    def _on_deferred_post_edit(self) -> None:
+        """Deferred callback: runs after 300 ms of edit inactivity."""
+        self._refresh_validation()
         self.category_sidebar.update_counts(self._doc.rules)
-        self.rule_card_browser.refresh()
+
+    def _refresh_status_fast(self) -> None:
+        """Update status bar text and window title — does NOT run validation."""
+        self._status_lbl.setText(
+            self._status_presenter.format_status_text(
+                self._doc.file_path,
+                self._doc.dirty,
+                self._doc.visible_count,
+            )
+        )
+        self._update_rule_count_label()
+        self._update_title()
 
     def _on_add_rule(self):
         """Insert a blank rule (toolbar / keyboard shortcut path)."""
@@ -697,11 +771,17 @@ class MainWindow(QMainWindow):
         cmd = AddRuleCommand(self._doc, insert_at, rule)
         self._doc.execute(cmd)
 
-        self._reload_rule_list()
+        # Incremental pool update — O(1) widget creation instead of full rebuild
+        self._section_map = build_section_map(self._doc.rules)
+        self.category_sidebar.update_counts(self._doc.rules)
+        self.rule_card_browser.pool_insert_card(insert_at, rule, self._doc.rules)
+        self._update_filter_search_count()
+
         self.rule_card_browser.select_real_index(insert_at)
         self._load_rule_to_ui(insert_at)
         self._refresh_search()
-        self._refresh_status()
+        self._refresh_status_fast()
+        self._validation_timer.start(300)
         self._refresh_undo_actions()
 
     def _on_delete_rule(self, real_index: int):
@@ -717,10 +797,16 @@ class MainWindow(QMainWindow):
         cmd = DeleteRuleCommand(self._doc, real_index)
         self._doc.execute(cmd)
 
-        self._reload_rule_list()
+        # Incremental pool update — O(1) widget removal instead of full rebuild
+        self._section_map = build_section_map(self._doc.rules)
+        self.category_sidebar.update_counts(self._doc.rules)
+        self.rule_card_browser.pool_remove_card(real_index, self._doc.rules)
+        self._update_filter_search_count()
+
         self._clear_rule_ui()
         self._refresh_search()
-        self._refresh_status()
+        self._refresh_status_fast()
+        self._validation_timer.start(300)
         self._refresh_undo_actions()
 
     def _on_move_rule(self, from_real: int, to_real: int):
@@ -729,11 +815,17 @@ class MainWindow(QMainWindow):
             return
         self._doc.execute(cmd)
 
-        self._reload_rule_list()
+        # Incremental pool update — swap two cards in-place
+        self._section_map = build_section_map(self._doc.rules)
+        self.category_sidebar.update_counts(self._doc.rules)
+        self.rule_card_browser.pool_swap_cards(from_real, to_real, self._doc.rules)
+        self._update_filter_search_count()
+
         self.rule_card_browser.select_real_index(cmd.to_index)
         self._load_rule_to_ui(cmd.to_index)
         self._refresh_search()
-        self._refresh_status()
+        self._refresh_status_fast()
+        self._validation_timer.start(300)
         self._refresh_undo_actions()
 
     def _on_copy_rule(self, real_index: int):
@@ -743,11 +835,19 @@ class MainWindow(QMainWindow):
         self._doc.execute(cmd)
         new_index = cmd.new_index
 
-        self._reload_rule_list()
+        # Incremental pool update — O(1) widget creation instead of full rebuild
+        self._section_map = build_section_map(self._doc.rules)
+        self.category_sidebar.update_counts(self._doc.rules)
+        self.rule_card_browser.pool_insert_card(
+            new_index, self._doc.rules[new_index], self._doc.rules
+        )
+        self._update_filter_search_count()
+
         self.rule_card_browser.select_real_index(new_index)
         self._load_rule_to_ui(new_index)
         self._refresh_search()
-        self._refresh_status()
+        self._refresh_status_fast()
+        self._validation_timer.start(300)
         self._refresh_undo_actions()
 
     # ------------------------------------------------------------------
@@ -866,11 +966,13 @@ class MainWindow(QMainWindow):
                 self._doc.visible_count,
             )
         )
+        self._update_rule_count_label()
         self._update_title()
         self._refresh_validation()
 
     def _refresh_validation(self) -> None:
         """Re-run validate_document, compute quick fixes, push to ValidationPanel."""
+        self._validation_timer.stop()   # cancel pending debounced call if any
         issues = validate_document(self._doc)
         fixes_per_issue: list[list] = []
         for issue in issues:
@@ -880,6 +982,21 @@ class MainWindow(QMainWindow):
             else:
                 fixes_per_issue.append([])
         self.validation_panel.refresh(issues, fixes_per_issue)
+
+        # Update NavigationBarV4 validation chip + status-bar summary
+        n_errors   = sum(1 for i in issues if i.severity == ValidationSeverity.ERROR)
+        n_warnings = sum(1 for i in issues if i.severity == ValidationSeverity.WARNING)
+        if n_errors:
+            summary = f"{n_errors} 個錯誤"
+            self.nav_bar.set_validation_status(False, summary)
+            self._status_validation_lbl.setText(f"✗ {summary}")
+        elif n_warnings:
+            summary = f"{n_warnings} 個警告"
+            self.nav_bar.set_validation_status(True, f"語法檢查：通過（{summary}）")
+            self._status_validation_lbl.setText(f"⚠ {summary}")
+        else:
+            self.nav_bar.set_validation_status(True, "語法檢查：通過")
+            self._status_validation_lbl.setText("✓ 語法通過")
 
     def _on_validation_issue_clicked(self, rule_index: int) -> None:
         """Navigate to the rule associated with a clicked validation issue."""
@@ -899,6 +1016,16 @@ class MainWindow(QMainWindow):
             self._load_rule_to_ui(rule_index)
         self._refresh_status()
         self._refresh_undo_actions()
+
+    def _update_rule_count_label(self) -> None:
+        """Sync rule count into browser header label and status bar."""
+        count = self._doc.visible_count
+        self._rule_count_lbl.setText(f"規則列表  ({count})" if count else "規則列表")
+        self._status_rule_count_lbl.setText(f"總規則數：{count}" if count else "")
+
+    def _on_import_backup(self) -> None:
+        """Stub — import backup functionality planned for a future milestone."""
+        QMessageBox.information(self, "匯入備份", "匯入備份功能即將在後續版本推出。")
 
     def _update_title(self) -> None:
         """Set window title — adds '* ' prefix when there are unsaved changes."""

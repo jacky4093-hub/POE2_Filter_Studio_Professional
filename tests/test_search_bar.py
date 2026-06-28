@@ -47,10 +47,14 @@ class TestSearchBarWidgetInit:
 
 class TestSearchBarWidgetSignals:
     def test_text_input_emits_search_changed(self, qapp):
+        """P17.7: text input debounced at 150 ms; flush timer to test emission."""
         w = SearchBarWidget()
         received = []
         w.search_changed.connect(lambda q, o: received.append((q, o)))
         w._input.setText("gem")
+        # Debounce timer is now active; fire it immediately for this test
+        w._debounce_timer.stop()
+        w._emit_search()
         assert len(received) == 1
         assert received[0][0] == "gem"
 
@@ -58,8 +62,7 @@ class TestSearchBarWidgetSignals:
         w = SearchBarWidget()
         received = []
         w.search_changed.connect(lambda q, o: received.append(o))
-        w._cb_case.setChecked(True)
-        w._input.setText("test")
+        w._cb_case.setChecked(True)   # option changes fire immediately (no debounce)
         # last emission should have match_case=True
         assert received[-1]["match_case"] is True
 

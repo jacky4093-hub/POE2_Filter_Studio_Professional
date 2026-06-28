@@ -123,9 +123,9 @@ class TestQssSelectors:
     def test_base_has_qlineedit(self):
         assert "QLineEdit" in self._content("base.qss")
 
-    # shell.qss
-    def test_shell_has_navbarbrand(self):
-        assert "#NavBarBrand" in self._content("shell.qss")
+    # navbar.qss (P18.1: NavBarBrand moved from shell.qss to navbar.qss)
+    def test_navbar_has_navbarbrand(self):
+        assert "#NavBrandTitle" in self._content("navbar.qss")
 
     def test_shell_has_contentshell(self):
         assert "#ContentShell" in self._content("shell.qss")

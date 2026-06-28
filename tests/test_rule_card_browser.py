@@ -147,25 +147,25 @@ class TestCategoryFilter:
         rules = [_currency(), _map_rule(), _currency(), _tail()]
         b.load_rules(rules)
         b.set_category_filter(Category.CURRENCY)
-        assert 0 in b._cards
-        assert 1 not in b._cards           # map excluded
-        assert 2 in b._cards
+        assert b.is_rule_visible(0)
+        assert not b.is_rule_visible(1)    # map excluded (card hidden)
+        assert b.is_rule_visible(2)
 
     def test_maps_filter(self, qapp):
         b = RuleCardBrowser()
         rules = [_currency(), _map_rule(), _gem(), _tail()]
         b.load_rules(rules)
         b.set_category_filter(Category.MAPS)
-        assert 0 not in b._cards
-        assert 1 in b._cards
-        assert 2 not in b._cards
+        assert not b.is_rule_visible(0)
+        assert b.is_rule_visible(1)
+        assert not b.is_rule_visible(2)
 
     def test_filter_with_no_match_shows_no_cards(self, qapp):
         b = RuleCardBrowser()
         rules = [_currency(), _tail()]
         b.load_rules(rules)
         b.set_category_filter(Category.GEMS)
-        assert len(b._cards) == 0
+        assert b.get_visible_count() == 0
 
     def test_same_filter_twice_is_noop(self, qapp):
         """Calling set_category_filter with same value must not rebuild."""
@@ -190,10 +190,10 @@ class TestRealIndexMapping:
         rules = [_currency(), _map_rule(), _currency(), _tail()]
         b.load_rules(rules)
         b.set_category_filter(Category.CURRENCY)
-        # Only doc indices 0 and 2 should be present
-        assert 0 in b._cards
-        assert 2 in b._cards
-        assert 1 not in b._cards
+        # P17.7: all non-tail cards stay in pool; map card is just hidden
+        assert b.is_rule_visible(0)
+        assert b.is_rule_visible(2)
+        assert not b.is_rule_visible(1)
 
     def test_card_real_index_property(self, qapp):
         b = RuleCardBrowser()
@@ -371,10 +371,10 @@ class TestWithSections:
         b = RuleCardBrowser()
         b.load_rules(rules, smap)
         b.set_category_filter(Category.GEMS)
-        assert 2 in b._cards
-        assert 3 in b._cards
-        assert 0 not in b._cards
-        assert 1 not in b._cards
+        assert b.is_rule_visible(2)
+        assert b.is_rule_visible(3)
+        assert not b.is_rule_visible(0)
+        assert not b.is_rule_visible(1)
 
 
 # ---------------------------------------------------------------------------
@@ -448,9 +448,9 @@ class TestSearchFilter:
         ]
         b.load_rules(rules)
         b.set_search_filter("Currency")
-        # Only rule with 'Currency' visible
-        assert 0 in b._cards
-        assert 1 not in b._cards
+        # Only rule with 'Currency' visible (P17.7: card pool always has all)
+        assert b.is_rule_visible(0)
+        assert not b.is_rule_visible(1)
 
     def test_clear_search_filter(self, qapp):
         """clear_search_filter should restore all cards."""
@@ -462,9 +462,9 @@ class TestSearchFilter:
         ]
         b.load_rules(rules)
         b.set_search_filter("Currency")
-        assert len(b._cards) == 1
+        assert b.get_visible_count() == 1
         b.clear_search_filter()
-        assert len(b._cards) == 2
+        assert b.get_visible_count() == 2
         assert 0 in b._cards
         assert 1 in b._cards
 
@@ -529,7 +529,7 @@ class TestSearchFilter:
         ]
         b.load_rules(rules)
         b.set_search_filter("Nonexistent")
-        assert len(b._cards) == 0
+        assert b.get_visible_count() == 0
 
     def test_search_filter_combined_with_category(self, qapp):
         """Both search and category filter should apply with AND logic."""
@@ -548,10 +548,10 @@ class TestSearchFilter:
         # Filter by category + search
         b.set_search_filter("Currency")
         # Search text "Currency" only in CURRENCY category rules
-        assert 0 in b._cards
-        assert 1 in b._cards
-        assert 2 not in b._cards  # MAPS not in CURRENCY
-        assert 3 not in b._cards  # GEMS not in CURRENCY
+        assert b.is_rule_visible(0)
+        assert b.is_rule_visible(1)
+        assert not b.is_rule_visible(2)  # MAPS not in CURRENCY
+        assert not b.is_rule_visible(3)  # GEMS not in CURRENCY
 
     def test_search_highlight_applied_to_matches(self, qapp):
         """Matching cards should get 'match' highlight when search active."""
@@ -564,7 +564,7 @@ class TestSearchFilter:
         b.load_rules(rules)
         b.set_search_filter("Currency")
         assert b._cards[0].property("cardHighlight") == "match"
-        assert 1 not in b._cards  # not visible
+        assert not b.is_rule_visible(1)  # not visible (card hidden in pool)
 
     def test_search_highlight_cleared_on_empty_query(self, qapp):
         """Highlight should clear when search is cleared."""
@@ -614,8 +614,8 @@ class TestSearchFilter:
         assert b._selected_real == 0
         # Search that excludes the selected rule
         b.set_search_filter("Gem")
-        # Selection should be cleared
-        assert 0 not in b._cards
+        # P17.7: card stays in pool but hidden; selection cleared
+        assert not b.is_rule_visible(0)
         assert b._selected_real == -1
 
     def test_search_after_category_filter(self, qapp):

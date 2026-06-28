@@ -215,14 +215,15 @@ class TestSaveWorkspacePersistsSettings:
         assert len(mgr2.get_splitter_sizes()) == w._splitter.count()
 
     def test_restore_workspace_state_applies_splitter(self, qapp, tmp_path):
+        # P18.1: splitter is now 4 panels; saved sizes must have 4 values to be applied
         mgr = SettingsManager(settings_path=str(tmp_path / "settings.json"))
-        mgr.set_splitter_sizes([200, 700, 350])
+        mgr.set_splitter_sizes([190, 300, 580, 290])
         mgr.save()
 
         mgr2 = SettingsManager(settings_path=str(tmp_path / "settings.json"))
         w = MainWindow(settings_mgr=mgr2)
         sizes = w._splitter.sizes()
-        assert len(sizes) == 3
+        assert len(sizes) == 4
         # sizes should sum to roughly the same total (Qt may adjust slightly)
         assert sum(sizes) > 0
 
