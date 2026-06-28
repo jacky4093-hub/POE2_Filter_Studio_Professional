@@ -334,6 +334,8 @@ class TestMainWindowValidationIntegration:
             encoding="utf-8",
         )
         window.load_file(str(f))
+        # P17.10A: load_file() defers validation; fire it now to populate the panel
+        QApplication.processEvents()
         # After load, validation_panel should show at least 1 issue (font size 99)
         assert window.validation_panel._error_chip.text() is not None
         # The list should have items for the invalid font size
@@ -355,6 +357,8 @@ class TestMainWindowValidationIntegration:
             encoding="utf-8",
         )
         window.load_file(str(f))
+        # P17.10A: load_file() defers validation; fire it now to populate the panel
+        QApplication.processEvents()
         # First, find the item for rule index 1 (the invalid one)
         lw = window.validation_panel._list
         target_item = None

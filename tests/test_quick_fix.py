@@ -525,6 +525,8 @@ class TestMainWindowQuickFix:
 
     def test_apply_fix_refreshes_validation(self, window, tmp_path):
         self._load(window, tmp_path, "Show\n    SetFontSize 99\n\n")
+        # P17.10A: load_file() defers validation; fire it now to populate the panel
+        QApplication.processEvents()
         # Before fix: should show a warning
         assert window.validation_panel._list.count() >= 1
         fix = QuickFix("修正為 45", "SetFontSize", "45")
@@ -543,6 +545,8 @@ class TestMainWindowQuickFix:
 
     def test_refresh_validation_passes_fixes_to_panel(self, window, tmp_path):
         self._load(window, tmp_path, "Show\n    SetFontSize 99\n\n")
+        # P17.10A: load_file() defers validation; fire it now to populate the panel
+        QApplication.processEvents()
         # After load, panel should have the issue with a fix button available
         lw = window.validation_panel._list
         assert lw.count() >= 1

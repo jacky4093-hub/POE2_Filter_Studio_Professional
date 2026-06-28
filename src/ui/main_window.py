@@ -583,7 +583,7 @@ class MainWindow(QMainWindow):
         self._active_category = Category.ALL
         self.category_sidebar.set_active_category(Category.ALL)
         self.rule_card_browser.set_category_filter(None)
-        self.category_sidebar.update_counts(self._doc.rules)
+        # P17.10A-3: category counts deferred — scheduled below after fast status
         self.rule_card_browser.load_rules(self._doc.rules, self._section_map)
         self._clear_rule_ui()
         self.search_bar.clear()
@@ -596,7 +596,11 @@ class MainWindow(QMainWindow):
         if saved:
             self.rule_card_browser.apply_section_states(saved)
 
-        self._refresh_status()      # includes _update_title()
+        # P17.10A-1/3: fast status update + defer expensive work to next event loop
+        self._refresh_status_fast()           # title + status bar + rule count, no validate
+        self._validation_timer.stop()         # cancel any pending debounce from previous edit
+        self._schedule_deferred_category_count()
+        QTimer.singleShot(0, self._refresh_validation)
         self._refresh_undo_actions()
 
         self._settings_mgr.last_open_dir = os.path.dirname(os.path.abspath(path))
@@ -736,6 +740,21 @@ class MainWindow(QMainWindow):
 
         # Defer expensive work — restart timer so it fires 300 ms after LAST edit
         self._validation_timer.start(300)
+
+    def _schedule_deferred_category_count(self) -> None:
+        """Schedule a category count refresh after the next event-loop tick.
+
+        Uses a rules-list snapshot to guard against stale updates: if another
+        file is loaded before the callback fires, the callback is silently skipped.
+        """
+        _snap = self._doc.rules
+        QTimer.singleShot(0, lambda: self._apply_deferred_category_count(_snap))
+
+    def _apply_deferred_category_count(self, rules_snapshot: list) -> None:
+        """Execute deferred category count — no-op when a newer file has loaded."""
+        if self._doc.rules is not rules_snapshot:
+            return
+        self.category_sidebar.update_counts(self._doc.rules)
 
     def _on_deferred_post_edit(self) -> None:
         """Deferred callback: runs after 300 ms of edit inactivity."""

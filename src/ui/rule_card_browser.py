@@ -382,47 +382,55 @@ class RuleCardBrowser(QWidget):
 
         Called only by load_rules() (file open / undo-redo).  Subsequent
         filter changes use refresh() (show/hide only — no widget allocation).
+
+        P17.10A-2: updates are disabled on the content widget for the entire
+        pool rebuild, then re-enabled atomically.  Qt repaints once at the end
+        instead of once per widget addition — reduces repaint/layout thrashing.
         """
-        self._clear_all_layout_items()
-        self._cards.clear()
-        self._section_headers.clear()
+        self._content.setUpdatesEnabled(False)
+        try:
+            self._clear_all_layout_items()
+            self._cards.clear()
+            self._section_headers.clear()
 
-        has_sections = bool(self._section_map and self._section_map.sections)
-        last_sec_idx: int = -999
-        display_num = 1
+            has_sections = bool(self._section_map and self._section_map.sections)
+            last_sec_idx: int = -999
+            display_num = 1
 
-        for real_idx, rule in enumerate(self._rules):
-            if rule.action == "__TAIL__":
-                continue
+            for real_idx, rule in enumerate(self._rules):
+                if rule.action == "__TAIL__":
+                    continue
 
-            if has_sections and self._section_map:
-                sec_idx = self._section_map.rule_to_section.get(real_idx, -1)
-                if sec_idx != last_sec_idx:
-                    last_sec_idx = sec_idx
-                    name = (
-                        self._section_map.sections[sec_idx].name
-                        if sec_idx >= 0
-                        else "（未分類）"
-                    )
-                    header = self._make_section_header(name)
-                    header.hide()
-                    self._section_headers.append((sec_idx, header))
-                    self._list_layout.addWidget(header)
+                if has_sections and self._section_map:
+                    sec_idx = self._section_map.rule_to_section.get(real_idx, -1)
+                    if sec_idx != last_sec_idx:
+                        last_sec_idx = sec_idx
+                        name = (
+                            self._section_map.sections[sec_idx].name
+                            if sec_idx >= 0
+                            else "（未分類）"
+                        )
+                        header = self._make_section_header(name)
+                        header.hide()
+                        self._section_headers.append((sec_idx, header))
+                        self._list_layout.addWidget(header)
 
-            card = self._make_card(real_idx, rule, display_num)
-            card.hide()  # refresh() will show based on filters
-            self._list_layout.addWidget(card)
-            display_num += 1
+                card = self._make_card(real_idx, rule, display_num)
+                card.hide()  # refresh() will show based on filters
+                self._list_layout.addWidget(card)
+                display_num += 1
 
-        # Persistent empty-state label (show/hide instead of create/destroy)
-        self._empty_lbl = QLabel()
-        self._empty_lbl.setObjectName("RuleCardEmptyLabel")
-        self._empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._list_layout.addWidget(self._empty_lbl)
-        self._empty_lbl.hide()
+            # Persistent empty-state label (show/hide instead of create/destroy)
+            self._empty_lbl = QLabel()
+            self._empty_lbl.setObjectName("RuleCardEmptyLabel")
+            self._empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self._list_layout.addWidget(self._empty_lbl)
+            self._empty_lbl.hide()
 
-        # Trailing spacer pushes cards to top
-        self._list_layout.addStretch(1)
+            # Trailing spacer pushes cards to top
+            self._list_layout.addStretch(1)
+        finally:
+            self._content.setUpdatesEnabled(True)
 
     def pool_insert_card(self, insert_at: int, rule: FilterRule,
                          new_rules: list[FilterRule]) -> None:

@@ -158,6 +158,8 @@ class TestQuickFixFastPath:
     def test_validation_panel_updates_after_deferred_callback(self, window, tmp_path):
         """After fixing to a valid value, deferred callback must clear the warning."""
         _load(window, tmp_path, "Show\n    SetFontSize 99\n\n")
+        # P17.10A: load_file() defers validation; fire it now to populate the panel
+        QApplication.processEvents()
         assert window.validation_panel._list.count() >= 1
         window._on_quick_fix_requested(0, QuickFix("修正為 60", "SetFontSize", "60"))
         # Simulate timer firing
