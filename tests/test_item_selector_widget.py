@@ -302,9 +302,9 @@ class TestSearch:
         texts = _list_texts(widget)
         assert any("Vaal Orb" in t for t in texts)
 
-    def test_search_no_match_shows_empty_list(self, widget):
+    def test_search_no_match_shows_placeholder(self, widget):
         widget._search_edit.setText("xyzzy_nonexistent_abc123")
-        assert widget._item_list.count() == 0
+        assert widget._item_list.count() == 1  # H-02: placeholder 取代空列表
 
     def test_search_clear_restores_category_view(self, widget):
         _set_category(widget, "Weapons")
@@ -322,6 +322,28 @@ class TestSearch:
 
     def test_search_placeholder_text(self, widget):
         assert "搜尋" in widget._search_edit.placeholderText()
+
+    def test_search_no_match_placeholder_not_selectable(self, widget):
+        """H-02: placeholder item 必須不可選取。"""
+        from PySide6.QtCore import Qt
+        widget._search_edit.setText("xyzzy_nonexistent_abc123")
+        assert widget._item_list.count() == 1
+        flag = widget._item_list.item(0).flags()
+        assert not bool(flag & Qt.ItemFlag.ItemIsSelectable)
+
+    def test_search_no_match_selected_item_is_none(self, widget):
+        """H-02: placeholder 被程式選取時 selected_item() 仍回傳 None。"""
+        widget._search_edit.setText("xyzzy_nonexistent_abc123")
+        widget._item_list.setCurrentRow(0)
+        assert widget.selected_item() is None
+
+    def test_search_clear_after_no_match_restores_list(self, widget):
+        """清空搜尋（在無結果後）應恢復正常分類列表，不保留 placeholder。"""
+        _set_category(widget, "Weapons")
+        count_before = widget._item_list.count()
+        widget._search_edit.setText("xyzzy_nonexistent_abc123")
+        widget._search_edit.setText("")
+        assert widget._item_list.count() == count_before
 
 
 # ---------------------------------------------------------------------------

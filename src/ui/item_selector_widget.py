@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import Signal, QSize
+from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtWidgets import (
     QComboBox,
     QLabel,
@@ -95,7 +95,6 @@ class ItemSelectorWidget(QWidget):
         self._item_list = QListWidget()
         self._item_list.setObjectName("ItemSelectorItemList")
         self._item_list.setUniformItemSizes(False)
-        self._item_list.setSpacing(1)
         layout.addWidget(item_lbl)
         layout.addWidget(self._item_list, stretch=1)
 
@@ -124,15 +123,17 @@ class ItemSelectorWidget(QWidget):
         self._on_category_changed(0)
 
     def _populate_list(self, items: list[ItemDefinition]) -> None:
-        """填充物品清單（blockSignals 防止逐一添加時重複觸發 selection changed）。"""
+        """填充物品清單（blockSignals 防重複訊號，setUpdatesEnabled 批次重繪）。"""
+        self._item_list.setUpdatesEnabled(False)
         self._item_list.blockSignals(True)
         self._item_list.clear()
         self._current_items = list(items)
         for item in items:
             lw = QListWidgetItem(f"{item.name_zh}\n{item.name_en}")
-            lw.setSizeHint(QSize(0, 42))
+            lw.setSizeHint(QSize(-1, 42))
             self._item_list.addItem(lw)
         self._item_list.blockSignals(False)
+        self._item_list.setUpdatesEnabled(True)
 
     def _refresh_item_list(self) -> None:
         """根據目前分類 / 子分類填充清單。"""
@@ -174,6 +175,10 @@ class ItemSelectorWidget(QWidget):
         if text:
             results = self._db.search(text)
             self._populate_list(results)
+            if not results:
+                hint = QListWidgetItem("沒有找到符合的物品")
+                hint.setFlags(Qt.ItemFlag.NoItemFlags)
+                self._item_list.addItem(hint)
         else:
             self._refresh_item_list()
 

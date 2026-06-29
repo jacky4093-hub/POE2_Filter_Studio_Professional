@@ -567,7 +567,17 @@ class RuleDetailEditor(QWidget):
         self._basetype_edit = QLineEdit()
         self._basetype_edit.setObjectName("RuleDetailBaseType")
         self._basetype_edit.setPlaceholderText('"Divine Orb" …')
-        form.addRow("BaseType", self._basetype_edit)
+        # P23.3: 物品選擇按鈕（並排於 BaseType 欄位右側）
+        self._basetype_pick_btn = QPushButton("選擇物品")
+        self._basetype_pick_btn.setObjectName("BaseTypePickBtn")
+        self._basetype_pick_btn.clicked.connect(self._on_pick_basetype_item)
+        _bt_row = QWidget()
+        _bt_hbox = QHBoxLayout(_bt_row)
+        _bt_hbox.setContentsMargins(0, 0, 0, 0)
+        _bt_hbox.setSpacing(4)
+        _bt_hbox.addWidget(self._basetype_edit, stretch=1)
+        _bt_hbox.addWidget(self._basetype_pick_btn)
+        form.addRow("BaseType", _bt_row)
 
         vlayout.addWidget(box)
 
@@ -708,6 +718,47 @@ class RuleDetailEditor(QWidget):
                 ConditionValue(key="Class", op="", value=quoted)
             )
         self._on_any_field_changed()   # F-02: AliasCompleter 選取後即時刷新
+
+    # P23.3 ───────────────────────────────────────────────────────────────────
+
+    def _on_pick_basetype_item(self) -> None:
+        """P23.3: 開啟物品選擇對話框，選取後寫入 BaseType 欄位並同步資料流。"""
+        from PySide6.QtWidgets import QDialog
+        dlg, selector = self._create_item_selector_dialog()
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            item = selector.selected_item()
+            if item is not None:
+                self._on_basetype_completed(item.name_en)
+
+    def _create_item_selector_dialog(self) -> tuple:
+        """P23.3: 建立物品選擇對話框（可被測試 monkeypatch 覆寫）。"""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QDialogButtonBox
+        from ui.item_selector_widget import ItemSelectorWidget
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("選擇物品")
+        dlg.setObjectName("ItemSelectorDialog")
+        dlg.setMinimumSize(360, 480)
+        dlg.resize(400, 520)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(8)
+
+        selector = ItemSelectorWidget(parent=dlg)
+        layout.addWidget(selector, stretch=1)
+
+        btn_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        btn_box.accepted.connect(dlg.accept)
+        btn_box.rejected.connect(dlg.reject)
+        layout.addWidget(btn_box)
+
+        # H-01 雙擊 / M-04 Enter 鍵直接確定（itemActivated 同時覆蓋兩者）
+        selector._item_list.itemActivated.connect(lambda _: dlg.accept())
+
+        return dlg, selector
 
     def _build_appearance_card(self, vlayout: QVBoxLayout) -> None:
         box, form = self._make_card("外觀")

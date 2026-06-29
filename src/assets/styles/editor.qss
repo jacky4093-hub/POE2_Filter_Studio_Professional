@@ -819,3 +819,62 @@ QGroupBox#RuleEditorCard[title="基本條件"]::title {
     border-color: #3b82f6;
     background: #0c1424;
 }
+
+/* L-01: Keyboard focus ring */
+#ItemSelectorItemList:focus {
+    border-color: #253558;
+}
+#ItemSelectorItemList::item:focus {
+    outline: none;
+}
+
+/* H-02: 搜尋無結果提示文字 */
+#ItemSelectorItemList::item:disabled {
+    color: #3a4f70;
+    font-style: italic;
+}
+
+/* M-02: Dialog OK / Cancel 深色主題 */
+#ItemSelectorDialog QPushButton {
+    background: #0f1a2e;
+    color: #c8d8f0;
+    border: 1px solid #1c2845;
+    border-radius: 4px;
+    min-height: 28px;
+    padding: 4px 16px;
+    font-size: 12px;
+}
+#ItemSelectorDialog QPushButton:hover {
+    background: #1a2f50;
+    border-color: #3b82f6;
+}
+#ItemSelectorDialog QPushButton[default="true"],
+#ItemSelectorDialog QPushButton:default {
+    border-color: #3b82f6;
+    color: #93c5fd;
+}
+#ItemSelectorDialog QPushButton:pressed {
+    background: rgba(59,130,246,0.25);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   P23.3 BaseType 物品選擇按鈕
+   ═══════════════════════════════════════════════════════════════════ */
+
+#BaseTypePickBtn {
+    background: rgba(99,102,241,0.12);
+    color: #a5b4fc;
+    border: 1px solid rgba(99,102,241,0.28);
+    border-radius: 3px;
+    font-size: 11px;
+    padding: 2px 8px;
+    min-height: 24px;
+    white-space: nowrap;
+}
+#BaseTypePickBtn:hover {
+    background: rgba(99,102,241,0.26);
+    border-color: rgba(99,102,241,0.55);
+}
+#BaseTypePickBtn:pressed {
+    background: rgba(99,102,241,0.38);
+}
