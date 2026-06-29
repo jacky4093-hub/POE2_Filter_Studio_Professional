@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 from core.condition_builder import (
     ConditionBuilderService, ConditionDef, ConditionValue, FieldType,
 )
+from core.condition_presets import ConditionPresetService
 
 
 # ---------------------------------------------------------------------------
@@ -146,7 +147,7 @@ class ConditionRowWidget(QWidget):
         self._string_edit = QLineEdit()
         self._string_edit.setObjectName("ConditionStringEdit")
         self._string_edit.setText(cv.value)
-        ph = ('"Currency" "Gems" …'
+        ph = ('"Currency" "Skill Gem" …'   # L-12: Skill Gem 才是正確的 POE2 class 名
               if self._cdef.key == "Class"
               else '"Divine Orb" …')
         self._string_edit.setPlaceholderText(ph)
@@ -284,6 +285,7 @@ class ConditionBuilderWidget(QWidget):
 
         self._rows:                list[ConditionRowWidget] = []
         self._existing_conditions: list                     = []
+        self._preset_svc = ConditionPresetService()
 
         self._setup_ui()
 
@@ -295,6 +297,29 @@ class ConditionBuilderWidget(QWidget):
         root = QVBoxLayout(self)
         root.setContentsMargins(6, 6, 6, 6)
         root.setSpacing(4)
+
+        # P22.3 — Preset 工具列
+        preset_bar = QHBoxLayout()
+        preset_bar.setSpacing(4)
+
+        preset_lbl = QLabel("預設模板")
+        preset_lbl.setObjectName("ConditionPresetLabel")
+        preset_lbl.setFixedWidth(56)
+
+        self._preset_combo = QComboBox()
+        self._preset_combo.setObjectName("ConditionPresetCombo")
+        self._preset_combo.addItem("── 選擇模板 ──", userData=None)
+        for pdef in self._preset_svc.available_presets():
+            self._preset_combo.addItem(pdef.label, userData=pdef.key)
+
+        preset_apply_btn = QPushButton("套用")
+        preset_apply_btn.setObjectName("ConditionPresetApplyBtn")
+        preset_apply_btn.clicked.connect(self._on_apply_preset)
+
+        preset_bar.addWidget(preset_lbl)
+        preset_bar.addWidget(self._preset_combo, stretch=1)
+        preset_bar.addWidget(preset_apply_btn)
+        root.addLayout(preset_bar)
 
         # Scrollable rows area
         scroll = QScrollArea()
@@ -422,17 +447,57 @@ class ConditionBuilderWidget(QWidget):
     def _on_condition_changed(self) -> None:
         self.conditions_changed.emit(self.get_conditions())
 
+    # ------------------------------------------------------------------
+    # P22.3 — Preset 套用
+    # ------------------------------------------------------------------
+
+    def apply_preset(self, key: str, skip_confirm: bool = False) -> None:
+        """套用指定 preset 至 widget。
+
+        Args:
+            key:          PRESETS 中的 preset key。
+            skip_confirm: True 時略過確認對話框（自動化測試用）。
+        """
+        if self._preset_svc.get_preset(key) is None:
+            return   # 未知 key：靜默忽略
+        if not skip_confirm:
+            from PySide6.QtWidgets import QMessageBox
+            answer = QMessageBox.question(
+                self,
+                "套用模板",
+                "確認覆蓋目前條件？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+        conditions = self._preset_svc.preset_to_conditions(key)
+        self.set_conditions(conditions)
+        self._on_condition_changed()
+        self._preset_combo.setCurrentIndex(0)   # M-07: 套用後重設至佔位符
+
+    def _on_apply_preset(self) -> None:
+        key = self._preset_combo.currentData()
+        if key is None:
+            return   # 佔位符「── 選擇模板 ──」被選中
+        self.apply_preset(key)
+
     def update_condition(self, cv: ConditionValue) -> None:
         """P22.2: 更新單一條件列的值（不發射 conditions_changed）。
 
         用於 Rule Editor 文字欄位 → Widget 的單向同步。
-        若 key 對應的列已存在 → 更新值；
-        若不存在且 cv 非空 → 新增一列；
+        若 key 對應的列已存在：
+          - cv 非空 → 更新值
+          - cv 為空 → 移除列（L-15）並發射 conditions_changed
+        若不存在且 cv 非空 → 新增一列（不發射 conditions_changed）。
         若不存在且 cv 為空 → 不動作。
         """
         for row in self._rows:
             if row._cdef.key == cv.key:
-                row.set_value(cv)
+                if cv.is_empty():
+                    self._on_remove_row(row)   # L-15: 空值 → 移除列（含 conditions_changed）
+                else:
+                    row.set_value(cv)
                 return
         if not cv.is_empty():
             self._add_row(cv)

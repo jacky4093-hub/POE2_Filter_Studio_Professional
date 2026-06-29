@@ -576,3 +576,167 @@ QGroupBox#RuleEditorCard QSpinBox::down-button:hover {
     background: #0a1a30;
     border-color: #2563eb;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   P22 Condition Builder — F-03 accent + F-04 widget styles
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* F-03: 基本條件 (ConditionBuilderWidget) — indigo accent */
+QGroupBox#RuleEditorCard[title="基本條件"] {
+    border-left-color: #6366f1;
+}
+QGroupBox#RuleEditorCard[title="基本條件"]::title {
+    color: #818cf8;
+}
+
+/* F-04: Scroll area wrapper */
+#ConditionBuilderScroll {
+    background: transparent;
+    border: none;
+}
+#ConditionBuilderScroll QScrollBar:vertical {
+    background: #07090f;
+    width: 4px;
+    margin: 0;
+}
+#ConditionBuilderScroll QScrollBar::handle:vertical {
+    background: #1c2845;
+    border-radius: 2px;
+    min-height: 20px;
+}
+#ConditionBuilderScroll QScrollBar::add-line:vertical,
+#ConditionBuilderScroll QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+/* F-04: Condition row — label */
+#ConditionLabel {
+    color: #6a7a96;
+    font-size: 11px;
+}
+
+/* F-04: Condition row — op combo (fixed narrow) */
+#ConditionOpCombo {
+    background: #0a0e18;
+    color: #c8d8f0;
+    border: 1px solid #1c2845;
+    border-radius: 3px;
+    min-height: 24px;
+    padding: 2px 4px;
+    font-size: 12px;
+    min-width: 44px;
+    max-width: 56px;
+}
+#ConditionOpCombo:hover { border-color: #253558; }
+#ConditionOpCombo:focus { border-color: #6366f1; }
+
+/* F-04: Condition row — enum value combo */
+#ConditionValueCombo {
+    background: #0a0e18;
+    color: #c8d8f0;
+    border: 1px solid #1c2845;
+    border-radius: 3px;
+    min-height: 24px;
+    padding: 2px 6px;
+    font-size: 12px;
+}
+#ConditionValueCombo:hover { border-color: #253558; }
+#ConditionValueCombo:focus { border-color: #6366f1; }
+
+/* F-04: Condition row — numeric spinbox (override 90px max from parent) */
+#ConditionSpinBox {
+    background: #0a0e18;
+    color: #c8d8f0;
+    border: 1px solid #1c2845;
+    border-radius: 3px;
+    min-height: 24px;
+    padding: 2px 6px;
+    font-size: 12px;
+    min-width: 60px;
+    max-width: 99999px;
+}
+#ConditionSpinBox:hover  { border-color: #253558; }
+#ConditionSpinBox:focus  { border-color: #6366f1; }
+
+/* F-04: Condition row — string edit (Class / BaseType) */
+#ConditionStringEdit {
+    background: #0a0e18;
+    color: #c8d8f0;
+    border: 1px solid #1c2845;
+    border-radius: 3px;
+    min-height: 24px;
+    padding: 2px 6px;
+    font-size: 12px;
+}
+#ConditionStringEdit:hover { border-color: #253558; }
+#ConditionStringEdit:focus { border-color: #6366f1; }
+
+/* F-04: Condition row — remove button */
+#ConditionRemoveBtn {
+    background: rgba(239,68,68,0.12);
+    color: #f87171;
+    border: 1px solid rgba(239,68,68,0.25);
+    border-radius: 3px;
+    font-weight: bold;
+    min-width: 22px;
+    max-width: 22px;
+    min-height: 22px;
+}
+#ConditionRemoveBtn:hover {
+    background: rgba(239,68,68,0.28);
+    border-color: rgba(239,68,68,0.55);
+}
+
+/* F-04: Preset toolbar */
+#ConditionPresetLabel {
+    color: #6a7a96;
+    font-size: 11px;
+}
+#ConditionPresetCombo {
+    background: #0a0e18;
+    color: #c8d8f0;
+    border: 1px solid #1c2845;
+    border-radius: 3px;
+    min-height: 24px;
+    padding: 2px 6px;
+    font-size: 12px;
+}
+#ConditionPresetCombo:hover { border-color: #253558; }
+#ConditionPresetApplyBtn {
+    background: rgba(99,102,241,0.12);
+    color: #a5b4fc;
+    border: 1px solid rgba(99,102,241,0.28);
+    border-radius: 3px;
+    min-height: 24px;
+    padding: 2px 10px;
+    font-size: 12px;
+}
+#ConditionPresetApplyBtn:hover {
+    background: rgba(99,102,241,0.26);
+    border-color: rgba(99,102,241,0.55);
+}
+
+/* F-04: Add-condition bar */
+#ConditionAddCombo {
+    background: #0a0e18;
+    color: #c8d8f0;
+    border: 1px solid #1c2845;
+    border-radius: 3px;
+    min-height: 24px;
+    padding: 2px 6px;
+    font-size: 12px;
+}
+#ConditionAddCombo:hover { border-color: #253558; }
+#ConditionAddBtn {
+    background: rgba(99,102,241,0.12);
+    color: #a5b4fc;
+    border: 1px solid rgba(99,102,241,0.28);
+    border-radius: 3px;
+    min-height: 24px;
+    padding: 2px 10px;
+    font-size: 12px;
+}
+#ConditionAddBtn:hover {
+    background: rgba(99,102,241,0.26);
+    border-color: rgba(99,102,241,0.55);
+}

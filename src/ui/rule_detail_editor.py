@@ -55,6 +55,7 @@ from PySide6.QtCore import Signal, Qt, QEvent, QPointF, QRectF
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QPolygonF
 
 from core.models import FilterRule
+from core.condition_builder import ConditionValue   # M-08: 移至頂層，避免方法內重複 import
 from widgets.visual_effect_picker import VisualEffectPicker
 from widgets.minimap_icon_grid import MinimapIconGrid
 from widgets.color_swatch_picker import ColorSwatchPicker
@@ -560,7 +561,7 @@ class RuleDetailEditor(QWidget):
 
         self._class_edit = QLineEdit()
         self._class_edit.setObjectName("RuleDetailClass")
-        self._class_edit.setPlaceholderText('"Currency" "Gems" …')
+        self._class_edit.setPlaceholderText('"Currency" "Skill Gem" …')
         form.addRow("Class", self._class_edit)
 
         self._basetype_edit = QLineEdit()
@@ -595,7 +596,7 @@ class RuleDetailEditor(QWidget):
     def _build_condition_builder_card(self, vlayout: QVBoxLayout) -> None:
         """P22.2: 在「條件」卡片下方插入圖形化條件建立器。"""
         box = QGroupBox("基本條件")
-        box.setObjectName("ConditionBuilderCard")
+        box.setObjectName("RuleEditorCard")   # F-03: 繼承主題 QSS
         box_layout = QVBoxLayout(box)
         box_layout.setContentsMargins(6, 4, 6, 6)
         box_layout.setSpacing(0)
@@ -654,7 +655,6 @@ class RuleDetailEditor(QWidget):
         self._basetype_edit.setToolTip(tt or "")
         # P22.2: 同步文字欄位 → ConditionBuilderWidget
         if self._cond_builder is not None:
-            from core.condition_builder import ConditionValue
             self._cond_builder.update_condition(
                 ConditionValue(key="BaseType", op="", value=self._basetype_edit.text())
             )
@@ -673,7 +673,6 @@ class RuleDetailEditor(QWidget):
         self._class_edit.setToolTip(tt or "")
         # P22.2: 同步文字欄位 → ConditionBuilderWidget
         if self._cond_builder is not None:
-            from core.condition_builder import ConditionValue
             self._cond_builder.update_condition(
                 ConditionValue(key="Class", op="", value=self._class_edit.text())
             )
@@ -689,10 +688,10 @@ class RuleDetailEditor(QWidget):
             self._basetype_edit.setToolTip(tt or "")
         # P22.2: 同步 → ConditionBuilderWidget
         if self._cond_builder is not None:
-            from core.condition_builder import ConditionValue
             self._cond_builder.update_condition(
                 ConditionValue(key="BaseType", op="", value=quoted)
             )
+        self._on_any_field_changed()   # F-02: AliasCompleter 選取後即時刷新
 
     def _on_class_completed(self, en_name: str) -> None:
         """AliasCompleter 選取後，將英文分類名稱格式化為 filter 引號格式。"""
@@ -705,10 +704,10 @@ class RuleDetailEditor(QWidget):
             self._class_edit.setToolTip(tt or "")
         # P22.2: 同步 → ConditionBuilderWidget
         if self._cond_builder is not None:
-            from core.condition_builder import ConditionValue
             self._cond_builder.update_condition(
                 ConditionValue(key="Class", op="", value=quoted)
             )
+        self._on_any_field_changed()   # F-02: AliasCompleter 選取後即時刷新
 
     def _build_appearance_card(self, vlayout: QVBoxLayout) -> None:
         box, form = self._make_card("外觀")
