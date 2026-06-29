@@ -132,6 +132,11 @@ class RuleCardBrowser(QWidget):
         self._btn_add.setObjectName("BtnAdd")
         self._btn_add.setToolTip("新增規則")
 
+        # P24.3: 快速建立規則按鈕（模板 → 物品 → 插入）
+        self._btn_quick_add = QPushButton("快速建立規則")
+        self._btn_quick_add.setObjectName("BtnQuickAdd")
+        self._btn_quick_add.setToolTip("用模板快速建立規則")
+
         self._btn_copy = QPushButton("複製")
         self._btn_copy.setObjectName("BtnCopy")
         self._btn_copy.setToolTip("複製目前規則")
@@ -148,7 +153,7 @@ class RuleCardBrowser(QWidget):
         self._btn_del.setObjectName("BtnDanger")
         self._btn_del.setToolTip("刪除目前規則")
 
-        for btn in (self._btn_add, self._btn_copy,
+        for btn in (self._btn_add, self._btn_quick_add, self._btn_copy,
                     self._btn_up, self._btn_dn, self._btn_del):
             btn.setFixedHeight(26)
             btn_row.addWidget(btn)
@@ -156,6 +161,7 @@ class RuleCardBrowser(QWidget):
         root.addLayout(btn_row)
 
         self._btn_add.clicked.connect(self._on_add)
+        self._btn_quick_add.clicked.connect(self._on_quick_add)
         self._btn_del.clicked.connect(self._on_delete)
         self._btn_copy.clicked.connect(self._on_copy)
         self._btn_up.clicked.connect(self._on_move_up)
@@ -761,6 +767,18 @@ class RuleCardBrowser(QWidget):
         if rule is not None:
             self.add_rule_from_wizard.emit(rule)
             self.add_rule_requested.emit()
+
+    def _on_quick_add(self) -> None:
+        """P24.3: 開啟 QuickRuleCreatorDialog，確認後以 add_rule_from_wizard 訊號插入規則。"""
+        from PySide6.QtWidgets import QDialog
+        from ui.quick_rule_creator_dialog import QuickRuleCreatorDialog
+
+        dlg = QuickRuleCreatorDialog(parent=self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            rule = dlg._created_rule
+            if rule is not None:
+                self.add_rule_from_wizard.emit(rule)
+                self.add_rule_requested.emit()
 
     def _on_delete(self) -> None:
         if self._selected_real >= 0:

@@ -54,6 +54,27 @@ QPushButton#BtnDanger:disabled {
     border-color: #1a1218;
 }
 
+/* ── P24.3 Quick-add button (indigo accent) ── */
+
+QPushButton#BtnQuickAdd {
+    background: rgba(99,102,241,0.12);
+    color: #a5b4fc;
+    border: 1px solid rgba(99,102,241,0.28);
+    border-radius: 4px;
+    font-size: 11px;
+    padding: 0 10px;
+}
+
+QPushButton#BtnQuickAdd:hover {
+    background: rgba(99,102,241,0.26);
+    border-color: rgba(99,102,241,0.55);
+    color: #c7d2fe;
+}
+
+QPushButton#BtnQuickAdd:pressed {
+    background: rgba(99,102,241,0.38);
+}
+
 /* ── V4 Browser status bar (inside RuleCardBrowser) ── */
 
 #RuleBrowserHeaderV4 {

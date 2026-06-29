@@ -878,3 +878,94 @@ QGroupBox#RuleEditorCard[title="基本條件"]::title {
 #BaseTypePickBtn:pressed {
     background: rgba(99,102,241,0.38);
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   P24.2 Quick Rule Creator Dialog
+   ═══════════════════════════════════════════════════════════════════ */
+
+#QuickRuleCreatorDialog {
+    background: #07090f;
+}
+
+#QuickRuleTplCombo {
+    background: #0a0e18;
+    color: #c8d8f0;
+    border: 1px solid #1c2845;
+    border-radius: 3px;
+    min-height: 26px;
+    padding: 3px 7px;
+    font-size: 12px;
+}
+#QuickRuleTplCombo:hover { border-color: #253558; }
+#QuickRuleTplCombo:focus { border-color: #6366f1; }
+
+#QuickRuleDescLabel {
+    color: #6a8ab0;
+    font-size: 11px;
+}
+
+#QuickRuleItemBtn {
+    background: rgba(99,102,241,0.12);
+    color: #a5b4fc;
+    border: 1px solid rgba(99,102,241,0.28);
+    border-radius: 3px;
+    font-size: 11px;
+    padding: 2px 10px;
+    min-height: 26px;
+}
+#QuickRuleItemBtn:hover {
+    background: rgba(99,102,241,0.26);
+    border-color: rgba(99,102,241,0.55);
+}
+#QuickRuleItemBtn:pressed {
+    background: rgba(99,102,241,0.38);
+}
+
+#QuickRulePreviewLabel {
+    color: #4d6080;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.6px;
+}
+
+#QuickRulePreview {
+    background: #040710;
+    color: #6a8ab0;
+    border: 1px solid #1c2845;
+    border-radius: 4px;
+    font-family: Consolas, "Cascadia Code", "Courier New", monospace;
+    font-size: 12px;
+    padding: 8px 10px;
+    line-height: 1.6;
+}
+
+#QuickRuleCreatorDialog QPushButton#QuickRuleCreateBtn {
+    background: rgba(99,102,241,0.18);
+    color: #c7d2fe;
+    border: 1px solid rgba(99,102,241,0.45);
+    border-radius: 4px;
+    min-height: 30px;
+    padding: 4px 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+#QuickRuleCreatorDialog QPushButton#QuickRuleCreateBtn:hover {
+    background: rgba(99,102,241,0.32);
+    border-color: rgba(99,102,241,0.75);
+}
+#QuickRuleCreatorDialog QPushButton#QuickRuleCreateBtn:pressed {
+    background: rgba(99,102,241,0.45);
+}
+#QuickRuleCreatorDialog QPushButton:not(#QuickRuleCreateBtn) {
+    background: #0f1a2e;
+    color: #c8d8f0;
+    border: 1px solid #1c2845;
+    border-radius: 4px;
+    min-height: 30px;
+    padding: 4px 16px;
+    font-size: 12px;
+}
+#QuickRuleCreatorDialog QPushButton:not(#QuickRuleCreateBtn):hover {
+    background: #1a2f50;
+    border-color: #3b82f6;
+}
