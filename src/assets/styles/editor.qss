@@ -740,3 +740,82 @@ QGroupBox#RuleEditorCard[title="基本條件"]::title {
     background: rgba(99,102,241,0.26);
     border-color: rgba(99,102,241,0.55);
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   P23.2 Item Selector Widget
+   ═══════════════════════════════════════════════════════════════════ */
+
+#ItemSelectorWidget {
+    background: #07090f;
+}
+
+#ItemSelectorLabel {
+    color: #4d6080;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.6px;
+}
+
+#ItemSelectorCatCombo,
+#ItemSelectorSubCombo {
+    background: #0a0e18;
+    color: #c8d8f0;
+    border: 1px solid #1c2845;
+    border-radius: 3px;
+    min-height: 26px;
+    padding: 3px 7px;
+    font-size: 12px;
+}
+#ItemSelectorCatCombo:hover,
+#ItemSelectorSubCombo:hover {
+    border-color: #253558;
+}
+#ItemSelectorCatCombo:focus,
+#ItemSelectorSubCombo:focus {
+    border-color: #3b82f6;
+}
+#ItemSelectorCatCombo QAbstractItemView,
+#ItemSelectorSubCombo QAbstractItemView {
+    background: #111827;
+    color: #c8d8f0;
+    border: 1px solid #253558;
+    selection-background-color: #1e3a5f;
+}
+
+#ItemSelectorItemList {
+    background: #050810;
+    color: #c8d8f0;
+    border: 1px solid #1c2845;
+    border-radius: 3px;
+    font-size: 12px;
+    outline: none;
+}
+#ItemSelectorItemList::item {
+    padding: 4px 8px;
+    border-bottom: 1px solid #0d1424;
+    min-height: 38px;
+}
+#ItemSelectorItemList::item:hover {
+    background: #0c1830;
+}
+#ItemSelectorItemList::item:selected {
+    background: #1e3a5f;
+    color: #e0ecff;
+}
+
+#ItemSelectorSearchEdit {
+    background: #0a0e18;
+    color: #c8d8f0;
+    border: 1px solid #1c2845;
+    border-radius: 3px;
+    min-height: 28px;
+    padding: 3px 8px;
+    font-size: 12px;
+}
+#ItemSelectorSearchEdit:hover {
+    border-color: #253558;
+}
+#ItemSelectorSearchEdit:focus {
+    border-color: #3b82f6;
+    background: #0c1424;
+}
