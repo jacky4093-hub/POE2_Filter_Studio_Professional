@@ -332,6 +332,9 @@ class RuleDetailEditor(QWidget):
         except Exception:
             pass
 
+        # P22.2 — 圖形化條件建立器（可選，失敗不影響編輯器）
+        self._cond_builder = None
+
         self._build_ui()
 
     # ------------------------------------------------------------------
@@ -482,6 +485,7 @@ class RuleDetailEditor(QWidget):
         self._build_title_bar(vlayout)
         self._build_basic_card(vlayout)
         self._build_condition_card(vlayout)
+        self._build_condition_builder_card(vlayout)   # P22.2
         self._build_appearance_card(vlayout)
         self._build_effect_card(vlayout)    # P19.4A.1: separated from 音效
         self._build_minimap_card(vlayout)
@@ -585,6 +589,54 @@ class RuleDetailEditor(QWidget):
         self._basetype_edit.editingFinished.connect(self._on_any_field_changed)
 
     # ------------------------------------------------------------------
+    # P22.2 — ConditionBuilderWidget 整合
+    # ------------------------------------------------------------------
+
+    def _build_condition_builder_card(self, vlayout: QVBoxLayout) -> None:
+        """P22.2: 在「條件」卡片下方插入圖形化條件建立器。"""
+        box = QGroupBox("基本條件")
+        box.setObjectName("ConditionBuilderCard")
+        box_layout = QVBoxLayout(box)
+        box_layout.setContentsMargins(6, 4, 6, 6)
+        box_layout.setSpacing(0)
+
+        try:
+            from ui.condition_builder_widget import ConditionBuilderWidget
+            self._cond_builder = ConditionBuilderWidget(
+                alias_svc=self._alias_svc, parent=box
+            )
+            self._cond_builder.setMinimumHeight(180)
+            self._cond_builder.setMaximumHeight(300)
+            box_layout.addWidget(self._cond_builder)
+            self._cond_builder.conditions_changed.connect(self._on_cond_builder_changed)
+        except Exception:
+            self._cond_builder = None
+
+        vlayout.addWidget(box)
+
+    def _on_cond_builder_changed(self, new_conditions: list) -> None:
+        """P22.2: Widget 條件改變 → 同步 Class/BaseType 文字欄位 → 觸發 rule update。"""
+        if self._loading or self._rule is None:
+            return
+        # 同步 Class / BaseType 文字欄位（backward compat，靜默設定）
+        class_val    = self._get_from_list(new_conditions, "Class")
+        basetype_val = self._get_from_list(new_conditions, "BaseType")
+        self._class_edit.blockSignals(True)
+        self._basetype_edit.blockSignals(True)
+        self._class_edit.setText(class_val)
+        self._basetype_edit.setText(basetype_val)
+        self._class_edit.blockSignals(False)
+        self._basetype_edit.blockSignals(False)
+        if self._alias_svc is not None:
+            self._class_edit.setToolTip(
+                self._alias_svc.tooltip_class(class_val) or ""
+            )
+            self._basetype_edit.setToolTip(
+                self._alias_svc.tooltip_basetype(basetype_val) or ""
+            )
+        self._on_any_field_changed()
+
+    # ------------------------------------------------------------------
     # P21.5 — 中文 Alias 解析（條件欄位）
     # ------------------------------------------------------------------
 
@@ -600,6 +652,12 @@ class RuleDetailEditor(QWidget):
             self._basetype_edit.blockSignals(False)
         tt = self._alias_svc.tooltip_basetype(self._basetype_edit.text())
         self._basetype_edit.setToolTip(tt or "")
+        # P22.2: 同步文字欄位 → ConditionBuilderWidget
+        if self._cond_builder is not None:
+            from core.condition_builder import ConditionValue
+            self._cond_builder.update_condition(
+                ConditionValue(key="BaseType", op="", value=self._basetype_edit.text())
+            )
 
     def _resolve_class_alias(self) -> None:
         """editingFinished 時將 Class 欄位的中文輸入解析為英文。"""
@@ -613,6 +671,12 @@ class RuleDetailEditor(QWidget):
             self._class_edit.blockSignals(False)
         tt = self._alias_svc.tooltip_class(self._class_edit.text())
         self._class_edit.setToolTip(tt or "")
+        # P22.2: 同步文字欄位 → ConditionBuilderWidget
+        if self._cond_builder is not None:
+            from core.condition_builder import ConditionValue
+            self._cond_builder.update_condition(
+                ConditionValue(key="Class", op="", value=self._class_edit.text())
+            )
 
     def _on_basetype_completed(self, en_name: str) -> None:
         """AliasCompleter 選取後，將英文物品名稱格式化為 filter 引號格式。"""
@@ -623,6 +687,12 @@ class RuleDetailEditor(QWidget):
         if self._alias_svc is not None:
             tt = self._alias_svc.tooltip_basetype(quoted)
             self._basetype_edit.setToolTip(tt or "")
+        # P22.2: 同步 → ConditionBuilderWidget
+        if self._cond_builder is not None:
+            from core.condition_builder import ConditionValue
+            self._cond_builder.update_condition(
+                ConditionValue(key="BaseType", op="", value=quoted)
+            )
 
     def _on_class_completed(self, en_name: str) -> None:
         """AliasCompleter 選取後，將英文分類名稱格式化為 filter 引號格式。"""
@@ -633,6 +703,12 @@ class RuleDetailEditor(QWidget):
         if self._alias_svc is not None:
             tt = self._alias_svc.tooltip_class(quoted)
             self._class_edit.setToolTip(tt or "")
+        # P22.2: 同步 → ConditionBuilderWidget
+        if self._cond_builder is not None:
+            from core.condition_builder import ConditionValue
+            self._cond_builder.update_condition(
+                ConditionValue(key="Class", op="", value=quoted)
+            )
 
     def _build_appearance_card(self, vlayout: QVBoxLayout) -> None:
         box, form = self._make_card("外觀")
@@ -1047,6 +1123,9 @@ class RuleDetailEditor(QWidget):
         if self._alias_svc is not None:
             self._class_edit.setToolTip(self._alias_svc.tooltip_class(class_val) or "")
             self._basetype_edit.setToolTip(self._alias_svc.tooltip_basetype(basetype_val) or "")
+        # P22.2 — 圖形化條件建立器
+        if self._cond_builder is not None:
+            self._cond_builder.set_conditions(rule.conditions)
 
         fs_raw = self._get_from_list(rule.actions, "SetFontSize")
         try:
@@ -1073,12 +1152,16 @@ class RuleDetailEditor(QWidget):
         if self._action_combo.currentText() in _ACTIONS:
             rule.action = self._action_combo.currentText()
 
-        rule.conditions = self._update_in_list(
-            rule.conditions, "Class", self._class_edit.text()
-        )
-        rule.conditions = self._update_in_list(
-            rule.conditions, "BaseType", self._basetype_edit.text()
-        )
+        # P22.2: ConditionBuilderWidget 可用時，由 widget 管理所有已知條件
+        if self._cond_builder is not None:
+            rule.conditions = self._cond_builder.get_conditions()
+        else:
+            rule.conditions = self._update_in_list(
+                rule.conditions, "Class", self._class_edit.text()
+            )
+            rule.conditions = self._update_in_list(
+                rule.conditions, "BaseType", self._basetype_edit.text()
+            )
 
         fs_str = str(self._fontsize_spin.value()) if self._fontsize_spin.value() > 0 else ""
         rule.actions = self._update_in_list(rule.actions, "SetFontSize", fs_str)

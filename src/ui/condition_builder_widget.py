@@ -421,3 +421,18 @@ class ConditionBuilderWidget(QWidget):
 
     def _on_condition_changed(self) -> None:
         self.conditions_changed.emit(self.get_conditions())
+
+    def update_condition(self, cv: ConditionValue) -> None:
+        """P22.2: 更新單一條件列的值（不發射 conditions_changed）。
+
+        用於 Rule Editor 文字欄位 → Widget 的單向同步。
+        若 key 對應的列已存在 → 更新值；
+        若不存在且 cv 非空 → 新增一列；
+        若不存在且 cv 為空 → 不動作。
+        """
+        for row in self._rows:
+            if row._cdef.key == cv.key:
+                row.set_value(cv)
+                return
+        if not cv.is_empty():
+            self._add_row(cv)
