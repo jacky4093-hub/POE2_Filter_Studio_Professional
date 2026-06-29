@@ -1,26 +1,26 @@
 /* ============================================================
-   POE2 Filter Studio — v4.0.0  P18.2 Category Sidebar V4
+   POE2 Filter Studio — v4.1.0  P19.1 Category Sidebar Modernized
    ============================================================ */
 
 /* ── Sidebar container ── */
 
 #CategorySidebar {
-    background-color: #0d1117;
+    background-color: #0b0f1a;
     border: none;
 }
 
 /* ── Header ── */
 
 #CategorySidebarHeader {
-    background-color: #0d1117;
-    border-bottom: 1px solid #131e30;
+    background-color: #0b0f1a;
+    border-bottom: 1px solid #161e34;
 }
 
 #CategorySidebarTitle {
-    color: #7e8eaf;
+    color: #4a5a78;
     font-weight: bold;
     font-size: 10px;
-    letter-spacing: 1.2px;
+    letter-spacing: 1.4px;
     text-transform: uppercase;
     background: transparent;
 }
@@ -28,32 +28,33 @@
 /* ── Category Search Row ── */
 
 #CategorySearchRow {
-    background-color: #0d1117;
+    background-color: #0b0f1a;
     padding: 2px 0;
 }
 
 #CategorySearchInput {
-    background-color: #111827;
-    color: #c8d4e8;
-    border: 1px solid #1c2845;
-    border-radius: 4px;
-    padding: 4px 8px;
+    background-color: #0d1421;
+    color: #b0c0dc;
+    border: 1px solid #1e2d4a;
+    border-radius: 6px;
+    padding: 5px 10px;
     font-size: 12px;
-    selection-background-color: #3b82f6;
+    selection-background-color: #7c3aed;
 }
 
 #CategorySearchInput:focus {
-    border-color: #3b82f6;
-    background-color: #141e30;
+    border-color: rgba(124, 58, 237, 0.7);
+    background-color: #101828;
+    outline: none;
 }
 
 #CategorySearchInput::placeholder {
-    color: #3a4a66;
+    color: #283548;
 }
 
 #CategorySearchClearButton {
     background-color: transparent;
-    color: #4a5a78;
+    color: #283548;
     border: none;
     border-radius: 3px;
     font-size: 10px;
@@ -61,16 +62,16 @@
 }
 
 #CategorySearchClearButton:enabled {
-    color: #7e8eaf;
+    color: #4a5a78;
 }
 
 #CategorySearchClearButton:enabled:hover {
-    background-color: #1c2845;
-    color: #dde4f0;
+    background-color: #1a2540;
+    color: #c0d0ec;
 }
 
 #CategorySearchClearButton:disabled {
-    color: #2a3550;
+    color: #1a2540;
 }
 
 /* ── Category List ── */
@@ -79,48 +80,50 @@
     background-color: transparent;
     border: none;
     outline: none;
-    padding: 4px 4px;
+    padding: 6px 4px;
 }
 
 #CategorySidebarList::item {
-    color: #7e8eaf;
-    padding: 7px 8px;
-    border-left: 3px solid transparent;
-    border-radius: 4px;
-    margin: 1px 0;
+    color: #7e90af;
+    padding: 9px 12px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    margin: 1px 2px;
+    font-size: 13px;
 }
 
 #CategorySidebarList::item:hover {
-    background-color: #141e30;
-    color: #b8c8e4;
-    border-left: 3px solid transparent;
+    background-color: rgba(124, 58, 237, 0.15);
+    color: #b0c0dc;
+    border: 1px solid rgba(124, 58, 237, 0.22);
 }
 
 #CategorySidebarList::item:selected {
-    background-color: rgba(124, 58, 237, 0.18);
-    color: #dde4f0;
-    border-left: 3px solid #7c3aed;
-    font-weight: bold;
+    background-color: rgba(124, 58, 237, 0.88);
+    color: #ffffff;
+    border: 1px solid rgba(167, 139, 250, 0.55);
+    font-weight: 600;
 }
 
 /* ── Active Filter Chip ── */
 
 #CategoryActiveFilterChip {
-    background-color: rgba(59, 130, 246, 0.12);
-    border: 1px solid #1c3a6b;
-    border-radius: 4px;
+    background-color: rgba(124, 58, 237, 0.15);
+    border: 1px solid rgba(124, 58, 237, 0.38);
+    border-radius: 6px;
     margin: 4px 8px;
 }
 
 #CategoryActiveFilterLabel {
-    color: #60a5fa;
+    color: #a78bfa;
     font-size: 11px;
+    font-weight: 600;
     background: transparent;
 }
 
 #CategoryActiveFilterClearButton {
     background-color: transparent;
-    color: #60a5fa;
+    color: #a78bfa;
     border: none;
     border-radius: 3px;
     font-size: 10px;
@@ -128,19 +131,19 @@
 }
 
 #CategoryActiveFilterClearButton:hover {
-    background-color: #1c3a6b;
-    color: #93c5fd;
+    background-color: rgba(124, 58, 237, 0.30);
+    color: #c4b5fd;
 }
 
-/* ── Quick Search Section (P18.3+ placeholder) ── */
+/* ── Quick Search Section (P19.x placeholder) ── */
 
 #CategoryQuickSearchSection {
-    background-color: #08101c;
+    background-color: #07090f;
     border-top: 1px solid #131e30;
 }
 
 #CategoryQuickSearchTitle {
-    color: #3a4a66;
+    color: #283548;
     font-size: 10px;
     font-weight: bold;
     letter-spacing: 0.8px;
@@ -149,16 +152,16 @@
 }
 
 #CategoryQuickSearchInput {
-    background-color: #0d1117;
-    color: #2a3550;
-    border: 1px solid #131e30;
+    background-color: #0a0f1a;
+    color: #283548;
+    border: 1px solid #0f1825;
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 12px;
 }
 
 #CategoryQuickSearchInput:disabled {
-    background-color: #0a0f1a;
-    color: #1c2845;
-    border-color: #0f1825;
+    background-color: #07090f;
+    color: #141e30;
+    border-color: #0a0f1a;
 }

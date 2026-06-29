@@ -1,11 +1,11 @@
 /* ============================================================
-   NavigationBarV4 — P18.1 V4 Shell
-   Top navigation bar styles
+   NavigationBarV4 — P19.8A Polish
+   Top navigation bar styles — purple-theme consistency
    ============================================================ */
 
 #NavigationBarV4 {
-    background-color: #0d1117;
-    border-bottom: 1px solid #1c2845;
+    background-color: #0b0f1a;
+    border-bottom: 1px solid rgba(124,58,237,0.25);
     min-height: 48px;
     max-height: 48px;
 }
@@ -25,13 +25,13 @@
     font-size: 14px;
     font-weight: bold;
     background: transparent;
-    letter-spacing: 0.2px;
+    letter-spacing: 0.5px;
 }
 
 /* ── Vertical separator ── */
 
 #NavSeparator {
-    background-color: #1c2845;
+    background-color: rgba(124,58,237,0.3);
     max-width: 1px;
     min-height: 22px;
     max-height: 22px;
@@ -41,75 +41,76 @@
 /* ── File-operation buttons ── */
 
 #NavBtnFile {
-    background-color: #161f30;
-    color: #c8d4e8;
+    background-color: #111827;
+    color: #b0bfd8;
     border: 1px solid #253558;
-    border-radius: 5px;
+    border-radius: 7px;
     font-size: 12px;
     padding: 4px 12px;
-    min-height: 30px;
+    min-height: 32px;
 }
 
 #NavBtnFile:hover {
-    background-color: #1e2e48;
-    border-color: #3558a0;
+    background-color: rgba(124,58,237,0.12);
+    border-color: rgba(124,58,237,0.6);
     color: #eef2fb;
 }
 
 #NavBtnFile:pressed {
-    background-color: #6d31d4;
-    border-color: #7c3aed;
+    background-color: rgba(124,58,237,0.28);
+    border-color: rgba(124,58,237,0.9);
     color: #ffffff;
 }
 
 /* ── Validation chip ── */
 
 #NavValidationChip {
-    border-radius: 5px;
-    padding: 4px 12px;
+    border-radius: 7px;
+    padding: 4px 14px;
     font-size: 12px;
     font-weight: bold;
-    min-width: 140px;
-    min-height: 28px;
-    max-height: 28px;
+    min-width: 148px;
+    min-height: 30px;
+    max-height: 30px;
 }
 
 #NavValidationChip[validationState="idle"] {
-    background-color: #111827;
-    color: #64748b;
+    background-color: #0f1523;
+    color: #4d6080;
     border: 1px solid #1c2845;
 }
 
 #NavValidationChip[validationState="pass"] {
-    background-color: #0a2015;
+    background-color: #071a10;
     color: #4ade80;
-    border: 1px solid #1a5c2e;
+    border: 1px solid rgba(74,222,128,0.3);
 }
 
 #NavValidationChip[validationState="fail"] {
-    background-color: #200a0a;
-    color: #f87171;
-    border: 1px solid #5c1a1a;
+    background-color: #1a0a0a;
+    color: #fca5a5;
+    border: 1px solid rgba(252,165,165,0.3);
 }
 
 /* ── Settings button ── */
 
 #NavSettingsBtn {
     background-color: transparent;
-    color: #7e8eaf;
+    color: #5a6a8a;
     border: 1px solid transparent;
-    border-radius: 5px;
+    border-radius: 7px;
     font-size: 15px;
     padding: 2px;
 }
 
 #NavSettingsBtn:hover {
-    background-color: #1a2640;
-    color: #dde4f0;
-    border-color: #253558;
+    background-color: rgba(124,58,237,0.12);
+    color: #c0d0e8;
+    border-color: rgba(124,58,237,0.4);
 }
 
 #NavSettingsBtn:pressed {
-    background-color: #253558;
+    background-color: rgba(124,58,237,0.25);
     color: #ffffff;
+    border-color: rgba(124,58,237,0.8);
 }

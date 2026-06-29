@@ -169,7 +169,7 @@ class MainWindow(QMainWindow):
         col_preview = QWidget()
         col_preview.setObjectName("ColPreview")
         col_preview.setMinimumWidth(180)
-        col_preview.setMaximumWidth(360)
+        col_preview.setMaximumWidth(460)
         col_prev_layout = QVBoxLayout(col_preview)
         col_prev_layout.setContentsMargins(0, 0, 0, 0)
         col_prev_layout.setSpacing(0)
@@ -182,9 +182,9 @@ class MainWindow(QMainWindow):
         self._splitter.addWidget(col_preview)
         self._splitter.setStretchFactor(0, 0)
         self._splitter.setStretchFactor(1, 0)
-        self._splitter.setStretchFactor(2, 3)
-        self._splitter.setStretchFactor(3, 1)
-        self._splitter.setSizes([190, 300, 580, 290])
+        self._splitter.setStretchFactor(2, 4)
+        self._splitter.setStretchFactor(3, 3)
+        self._splitter.setSizes([180, 260, 460, 350])
 
         v.addWidget(self._splitter, stretch=1)
         v.addWidget(self.validation_panel)
@@ -206,7 +206,9 @@ class MainWindow(QMainWindow):
         self._status_rule_count_lbl.setObjectName("StatusRuleCount")
         status_layout.addWidget(self._status_rule_count_lbl)
 
-        status_layout.addSpacing(16)
+        _sep1 = QLabel("|")
+        _sep1.setObjectName("StatusSeparator")
+        status_layout.addWidget(_sep1)
 
         self._status_validation_lbl = QLabel()
         self._status_validation_lbl.setObjectName("StatusValidationSummary")

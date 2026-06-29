@@ -194,14 +194,22 @@ class TestTemplateIcons:
 class TestWidgetsUseRegistry:
     """Widgets integrate with IconRegistry — no hardcoded paths."""
 
-    def test_category_sidebar_items_have_icons(self, qapp):
-        from ui.category_sidebar import CategorySidebarWidget
+    def test_category_sidebar_items_have_emoji(self, qapp):
+        """P19.1: sidebar uses emoji-in-text instead of SVG icons.
+        Each item text must contain the category's emoji from _CATEGORY_EMOJI."""
+        from ui.category_sidebar import CategorySidebarWidget, _CATEGORY_EMOJI
+        from PySide6.QtCore import Qt
+        _ROLE = Qt.ItemDataRole.UserRole + 10
         sidebar = CategorySidebarWidget()
         for row in range(sidebar._list.count()):
             item = sidebar._list.item(row)
-            assert not item.icon().isNull(), (
-                f"Sidebar row {row} has null icon: '{item.text()}'"
-            )
+            cat = item.data(_ROLE)
+            if cat is not None:
+                emoji = _CATEGORY_EMOJI.get(cat, "")
+                assert emoji and emoji in item.text(), (
+                    f"Sidebar row {row} (cat={cat}) must have emoji '{emoji}' "
+                    f"in text: '{item.text()}'"
+                )
 
     def test_rule_creation_dialog_items_have_icons(self, qapp):
         from ui.rule_creation_dialog import RuleCreationDialog

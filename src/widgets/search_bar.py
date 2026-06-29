@@ -77,6 +77,14 @@ class SearchBar(QWidget):
         esc.setContext(Qt.ShortcutContext.WidgetShortcut)
         esc.activated.connect(self._on_escape)
 
+        # P21.4 — 中文別名自動補全（可選，失敗不影響搜尋功能）
+        self._alias_completer = None
+        try:
+            from widgets.alias_completer import AliasCompleter
+            self._alias_completer = AliasCompleter(self._input, parent=self)
+        except Exception:
+            pass
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------

@@ -49,12 +49,15 @@ import math
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QFormLayout,
     QGroupBox, QLabel, QCheckBox, QComboBox, QLineEdit, QPlainTextEdit,
-    QSpinBox, QStackedWidget, QColorDialog, QPushButton,
+    QSpinBox, QStackedWidget, QColorDialog, QPushButton, QButtonGroup,
 )
 from PySide6.QtCore import Signal, Qt, QEvent, QPointF, QRectF
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QPolygonF
 
 from core.models import FilterRule
+from widgets.visual_effect_picker import VisualEffectPicker
+from widgets.minimap_icon_grid import MinimapIconGrid
+from widgets.color_swatch_picker import ColorSwatchPicker
 
 
 _ACTIONS = ["Show", "Hide", "Continue"]
@@ -321,6 +324,14 @@ class RuleDetailEditor(QWidget):
         self._alert_syncing: bool = False   # re-entrance guard for alert sound sync
         self._effect_syncing: bool = False  # re-entrance guard for PlayEffect sync
 
+        # P21.5 — 中文 Alias 整合服務（可選，失敗不影響編輯器）
+        self._alias_svc = None
+        try:
+            from core.rule_editor_alias import RuleEditorAliasService
+            self._alias_svc = RuleEditorAliasService()
+        except Exception:
+            pass
+
         self._build_ui()
 
     # ------------------------------------------------------------------
@@ -335,9 +346,12 @@ class RuleDetailEditor(QWidget):
         try:
             self._populate_fields()
             self._update_preview()
+            self._update_raw_filter()
             self._update_title()
         finally:
             self._loading = False
+        self._tab_bar_widget.setVisible(True)
+        self._tab1_btn.setChecked(True)   # always reset to Rule Editor tab
         self._stacked.setCurrentWidget(self._editor_page)
 
     def clear(self) -> None:
@@ -345,6 +359,8 @@ class RuleDetailEditor(QWidget):
         self._rule = None
         self._index = -1
         self._preview_text.setPlainText("")
+        self._raw_filter_text.setPlainText("")
+        self._tab_bar_widget.setVisible(False)
         self._stacked.setCurrentWidget(self._empty_page)
 
     def flush_pending(self) -> None:
@@ -360,10 +376,61 @@ class RuleDetailEditor(QWidget):
         root.setSpacing(0)
 
         self._stacked = QStackedWidget()
-        root.addWidget(self._stacked)
+
+        # Tab bar is added first; pages are referenced by the button lambdas
+        # at call-time (not definition-time), so order is safe.
+        self._tab_bar_widget = self._build_tab_bar()
+        self._tab_bar_widget.setVisible(False)
+        root.addWidget(self._tab_bar_widget)
+
+        root.addWidget(self._stacked, stretch=1)
 
         self._build_empty_page()
         self._build_editor_page()
+        self._build_raw_filter_page()
+
+    # ── Tab bar (shown when a rule is loaded) ─────────────────────────
+
+    def _build_tab_bar(self) -> QWidget:
+        bar = QWidget()
+        bar.setObjectName("RuleDetailTabBar")
+        layout = QHBoxLayout(bar)
+        layout.setContentsMargins(8, 6, 8, 0)
+        layout.setSpacing(4)
+
+        self._tab1_btn = QPushButton("規則編輯")
+        self._tab1_btn.setObjectName("RuleDetailTabBtn")
+        self._tab1_btn.setCheckable(True)
+
+        self._tab2_btn = QPushButton("原始內容")
+        self._tab2_btn.setObjectName("RuleDetailTabBtn")
+        self._tab2_btn.setCheckable(True)
+
+        self._tab_btn_group = QButtonGroup(bar)
+        self._tab_btn_group.setExclusive(True)
+        self._tab_btn_group.addButton(self._tab1_btn)
+        self._tab_btn_group.addButton(self._tab2_btn)
+
+        # Set initial state without firing signals (pages don't exist yet)
+        self._tab1_btn.blockSignals(True)
+        self._tab1_btn.setChecked(True)
+        self._tab1_btn.blockSignals(False)
+
+        layout.addWidget(self._tab1_btn)
+        layout.addWidget(self._tab2_btn)
+        layout.addStretch()
+
+        # Connections: page attributes resolved at call-time, not here
+        self._tab1_btn.toggled.connect(
+            lambda checked: self._stacked.setCurrentWidget(self._editor_page)
+            if checked else None
+        )
+        self._tab2_btn.toggled.connect(
+            lambda checked: self._stacked.setCurrentWidget(self._raw_filter_page)
+            if checked else None
+        )
+
+        return bar
 
     # ── Page 0: empty state ──────────────────────────────────────────
 
@@ -416,13 +483,32 @@ class RuleDetailEditor(QWidget):
         self._build_basic_card(vlayout)
         self._build_condition_card(vlayout)
         self._build_appearance_card(vlayout)
-        self._build_audio_card(vlayout)
+        self._build_effect_card(vlayout)    # P19.4A.1: separated from 音效
         self._build_minimap_card(vlayout)
-        self._build_preview_card(vlayout)
+        self._build_audio_card(vlayout)
         vlayout.addStretch()
 
+        self._build_preview_card()  # hidden widget for test compatibility (P19.3B)
         scroll.setWidget(content)
         self._stacked.addWidget(scroll)
+
+    # ── Page 2: Raw Filter (read-only) ───────────────────────────────
+
+    def _build_raw_filter_page(self) -> None:
+        page = QWidget()
+        page.setObjectName("RuleDetailRawPage")
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(12, 8, 12, 12)
+        layout.setSpacing(0)
+
+        self._raw_filter_text = QPlainTextEdit()
+        self._raw_filter_text.setObjectName("RuleDetailRawFilter")
+        self._raw_filter_text.setReadOnly(True)
+        self._raw_filter_text.setPlaceholderText("（尚未選取規則）")
+        layout.addWidget(self._raw_filter_text)
+
+        self._raw_filter_page = page
+        self._stacked.addWidget(page)
 
     def _build_title_bar(self, vlayout: QVBoxLayout) -> None:
         title_bar = QWidget()
@@ -480,48 +566,73 @@ class RuleDetailEditor(QWidget):
 
         vlayout.addWidget(box)
 
+        # P21.5 — 中文別名補全（可選）
+        self._class_completer = None
+        self._basetype_completer = None
+        try:
+            from widgets.alias_completer import AliasCompleter
+            self._class_completer = AliasCompleter(self._class_edit, parent=self)
+            self._basetype_completer = AliasCompleter(self._basetype_edit, parent=self)
+            self._basetype_completer.completed.connect(self._on_basetype_completed)
+            self._class_completer.completed.connect(self._on_class_completed)
+        except Exception:
+            pass
+
+        # 中文解析在 _on_any_field_changed 前執行（訊號連接順序即執行順序）
+        self._class_edit.editingFinished.connect(self._resolve_class_alias)
+        self._basetype_edit.editingFinished.connect(self._resolve_basetype_alias)
         self._class_edit.editingFinished.connect(self._on_any_field_changed)
         self._basetype_edit.editingFinished.connect(self._on_any_field_changed)
 
-    def _make_color_row(self, obj_name: str, placeholder: str, btn_obj_name: str) -> tuple:
-        """Return (container, QLineEdit, swatch_QLabel, pick_QPushButton).
+    # ------------------------------------------------------------------
+    # P21.5 — 中文 Alias 解析（條件欄位）
+    # ------------------------------------------------------------------
 
-        Layout: [swatch]  [RGBA text field]  [Pick button]
+    def _resolve_basetype_alias(self) -> None:
+        """editingFinished 時將 BaseType 欄位的中文輸入解析為英文。"""
+        if self._alias_svc is None:
+            return
+        text = self._basetype_edit.text()
+        resolved = self._alias_svc.resolve_filter_value(text, "BaseType")
+        if resolved != text:
+            self._basetype_edit.blockSignals(True)
+            self._basetype_edit.setText(resolved)
+            self._basetype_edit.blockSignals(False)
+        tt = self._alias_svc.tooltip_basetype(self._basetype_edit.text())
+        self._basetype_edit.setToolTip(tt or "")
 
-        - Swatch: live colour preview; also clickable via eventFilter.
-        - Text field: free-form RGBA entry (preserved from P13.4).
-        - Pick button: explicit "選色" trigger; more discoverable than swatch-click.
+    def _resolve_class_alias(self) -> None:
+        """editingFinished 時將 Class 欄位的中文輸入解析為英文。"""
+        if self._alias_svc is None:
+            return
+        text = self._class_edit.text()
+        resolved = self._alias_svc.resolve_filter_value(text, "Class")
+        if resolved != text:
+            self._class_edit.blockSignals(True)
+            self._class_edit.setText(resolved)
+            self._class_edit.blockSignals(False)
+        tt = self._alias_svc.tooltip_class(self._class_edit.text())
+        self._class_edit.setToolTip(tt or "")
 
-        The swatch tooltip is set by the caller after this returns.
-        """
-        container = QWidget()
-        hlayout = QHBoxLayout(container)
-        hlayout.setContentsMargins(0, 0, 0, 0)
-        hlayout.setSpacing(4)
+    def _on_basetype_completed(self, en_name: str) -> None:
+        """AliasCompleter 選取後，將英文物品名稱格式化為 filter 引號格式。"""
+        quoted = f'"{en_name}"'
+        self._basetype_edit.blockSignals(True)
+        self._basetype_edit.setText(quoted)
+        self._basetype_edit.blockSignals(False)
+        if self._alias_svc is not None:
+            tt = self._alias_svc.tooltip_basetype(quoted)
+            self._basetype_edit.setToolTip(tt or "")
 
-        # Colour preview swatch — visual anchor, also clickable
-        swatch = QLabel()
-        swatch.setObjectName("ColorSwatch")
-        swatch.setFixedSize(26, 22)
-        swatch.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._update_one_swatch(swatch, "")
-        hlayout.addWidget(swatch)
-
-        # Free-form RGBA text input
-        edit = QLineEdit()
-        edit.setObjectName(obj_name)
-        edit.setPlaceholderText(placeholder)
-        hlayout.addWidget(edit, stretch=1)
-
-        # Explicit pick button
-        btn = QPushButton("選色")
-        btn.setObjectName(btn_obj_name)
-        btn.setFixedWidth(48)
-        btn.setFixedHeight(26)
-        btn.setToolTip("開啟顏色選取器（支援 Alpha 透明度）")
-        hlayout.addWidget(btn)
-
-        return container, edit, swatch, btn
+    def _on_class_completed(self, en_name: str) -> None:
+        """AliasCompleter 選取後，將英文分類名稱格式化為 filter 引號格式。"""
+        quoted = f'"{en_name}"'
+        self._class_edit.blockSignals(True)
+        self._class_edit.setText(quoted)
+        self._class_edit.blockSignals(False)
+        if self._alias_svc is not None:
+            tt = self._alias_svc.tooltip_class(quoted)
+            self._class_edit.setToolTip(tt or "")
 
     def _build_appearance_card(self, vlayout: QVBoxLayout) -> None:
         box, form = self._make_card("外觀")
@@ -531,35 +642,75 @@ class RuleDetailEditor(QWidget):
         self._fontsize_spin.setObjectName("RuleDetailFontSize")
         self._fontsize_spin.setRange(0, 60)
         self._fontsize_spin.setSpecialValueText("—")
-        form.addRow("SetFontSize", self._fontsize_spin)
+        form.addRow("字體大小", self._fontsize_spin)
 
-        # Colour fields: [swatch] [RGBA text] [Pick button]
-        tc_row, self._textcolor_edit, self._textcolor_swatch, self._textcolor_btn = \
-            self._make_color_row("RuleDetailTextColor", "255 200 0 255", "ColorPickTextBtn")
+        # ── 3 colour pickers (P19.3C: compact single row) ──────────────
+        # Full ColorSwatchPicker objects kept for backward-compat attr aliases
+        # (_edit, _swatch, _btn). _edit and _btn are hidden so each picker
+        # collapses to swatch-only display inside the compact row.
+        self._textcolor_picker = ColorSwatchPicker(
+            "RuleDetailTextColor", "255 200 0 255", "ColorPickTextBtn"
+        )
+        self._textcolor_edit   = self._textcolor_picker._edit
+        self._textcolor_swatch = self._textcolor_picker._swatch
+        self._textcolor_btn    = self._textcolor_picker._btn
+        self._textcolor_picker._edit.hide()
+        self._textcolor_picker._btn.hide()
         self._textcolor_swatch.setToolTip("點選文字顏色預覽塊開啟選色器")
         self._textcolor_swatch.installEventFilter(self)
         self._textcolor_btn.clicked.connect(
             lambda: self._on_swatch_clicked("SetTextColor", self._textcolor_edit)
         )
-        form.addRow("SetTextColor", tc_row)
 
-        bc_row, self._bordercolor_edit, self._bordercolor_swatch, self._bordercolor_btn = \
-            self._make_color_row("RuleDetailBorderColor", "0 0 0 0", "ColorPickBorderBtn")
+        self._bordercolor_picker = ColorSwatchPicker(
+            "RuleDetailBorderColor", "0 0 0 0", "ColorPickBorderBtn"
+        )
+        self._bordercolor_edit   = self._bordercolor_picker._edit
+        self._bordercolor_swatch = self._bordercolor_picker._swatch
+        self._bordercolor_btn    = self._bordercolor_picker._btn
+        self._bordercolor_picker._edit.hide()
+        self._bordercolor_picker._btn.hide()
         self._bordercolor_swatch.setToolTip("點選邊框顏色預覽塊開啟選色器")
         self._bordercolor_swatch.installEventFilter(self)
         self._bordercolor_btn.clicked.connect(
             lambda: self._on_swatch_clicked("SetBorderColor", self._bordercolor_edit)
         )
-        form.addRow("SetBorderColor", bc_row)
 
-        bg_row, self._bgcolor_edit, self._bgcolor_swatch, self._bgcolor_btn = \
-            self._make_color_row("RuleDetailBgColor", "0 0 0 180", "ColorPickBgBtn")
+        self._bgcolor_picker = ColorSwatchPicker(
+            "RuleDetailBgColor", "0 0 0 180", "ColorPickBgBtn"
+        )
+        self._bgcolor_edit   = self._bgcolor_picker._edit
+        self._bgcolor_swatch = self._bgcolor_picker._swatch
+        self._bgcolor_btn    = self._bgcolor_picker._btn
+        self._bgcolor_picker._edit.hide()
+        self._bgcolor_picker._btn.hide()
         self._bgcolor_swatch.setToolTip("點選背景顏色預覽塊開啟選色器")
         self._bgcolor_swatch.installEventFilter(self)
         self._bgcolor_btn.clicked.connect(
             lambda: self._on_swatch_clicked("SetBackgroundColor", self._bgcolor_edit)
         )
-        form.addRow("SetBackgroundColor", bg_row)
+
+        # Compact single row: label (above) + swatch (below) × 3 colours
+        color_row_w = QWidget()
+        color_row = QHBoxLayout(color_row_w)
+        color_row.setContentsMargins(0, 2, 0, 2)
+        color_row.setSpacing(14)
+        for label_text, picker in (
+            ("文字顏色", self._textcolor_picker),
+            ("背景顏色", self._bgcolor_picker),
+            ("邊框顏色", self._bordercolor_picker),
+        ):
+            cell_w = QWidget()
+            cell = QVBoxLayout(cell_w)
+            cell.setContentsMargins(0, 0, 0, 0)
+            cell.setSpacing(3)
+            lbl = QLabel(label_text)
+            lbl.setObjectName("RuleDetailColorLabel")
+            cell.addWidget(lbl)
+            cell.addWidget(picker)
+            color_row.addWidget(cell_w)
+        color_row.addStretch()
+        form.addRow(color_row_w)
 
         vlayout.addWidget(box)
 
@@ -572,8 +723,8 @@ class RuleDetailEditor(QWidget):
     # Minimap picker sync
     # ------------------------------------------------------------------
 
-    def _mm_sync_to_dropdowns(self) -> None:
-        """Parse minimap text and update dropdowns; no-op if invalid."""
+    def _mm_sync_to_grid(self) -> None:
+        """Parse minimap text and update MinimapIconGrid; no-op if invalid."""
         if self._mm_syncing:
             return
         parsed = _mm_parse(self._minimap_edit.text())
@@ -582,21 +733,17 @@ class RuleDetailEditor(QWidget):
         self._mm_syncing = True
         try:
             size, color, shape = parsed
-            self._mm_size.setCurrentText(size)
-            self._mm_color.setCurrentText(color)
-            self._mm_shape.setCurrentText(shape)
+            self._minimap_grid.set_value(int(size), color, shape)
         finally:
             self._mm_syncing = False
 
-    def _mm_sync_from_dropdowns(self) -> None:
-        """Write dropdown values back to minimap text and emit rule_changed."""
+    def _mm_sync_from_grid(self) -> None:
+        """Write MinimapIconGrid values back to minimap text and emit rule_changed."""
         if self._mm_syncing or self._rule is None:
             return
         self._mm_syncing = True
         try:
-            size  = self._mm_size.currentText()
-            color = self._mm_color.currentText()
-            shape = self._mm_shape.currentText()
+            size, color, shape = self._minimap_grid.value()
             self._minimap_edit.setText(f"{size} {color} {shape}")
         finally:
             self._mm_syncing = False
@@ -681,7 +828,7 @@ class RuleDetailEditor(QWidget):
         self._effect_syncing = True
         try:
             color, is_temp = parsed
-            self._effect_color.setCurrentText(color)
+            self._effect_picker.set_value(color)
             self._effect_temp_cb.setChecked(is_temp)
         finally:
             self._effect_syncing = False
@@ -692,9 +839,12 @@ class RuleDetailEditor(QWidget):
             return
         self._effect_syncing = True
         try:
-            color = self._effect_color.currentText()
-            temp_suffix = " Temp" if self._effect_temp_cb.isChecked() else ""
-            self._effect_edit.setText(f"{color}{temp_suffix}")
+            color = self._effect_picker.value()
+            if color:
+                temp_suffix = " Temp" if self._effect_temp_cb.isChecked() else ""
+                self._effect_edit.setText(f"{color}{temp_suffix}")
+            else:
+                self._effect_edit.setText("")
         finally:
             self._effect_syncing = False
         self._on_any_field_changed()
@@ -721,9 +871,9 @@ class RuleDetailEditor(QWidget):
             )
 
     def _build_audio_card(self, vlayout: QVBoxLayout) -> None:
+        """音效 Card — PlayAlertSound only (P19.4A.1: separated from PlayEffect)."""
         box, form = self._make_card("音效")
 
-        # ── PlayAlertSound ────────────────────────────────────────────────
         self._alert_edit = QLineEdit()
         self._alert_edit.setObjectName("RuleDetailAlertSound")
         self._alert_edit.setPlaceholderText("1 300")
@@ -753,7 +903,6 @@ class RuleDetailEditor(QWidget):
         picker_layout.addStretch()
         form.addRow("快速選擇", picker)
 
-        # Sound info preview label
         self._alert_preview_lbl = QLabel("（未設定）")
         self._alert_preview_lbl.setObjectName("AlertSoundPreviewLabel")
         form.addRow("預覽", self._alert_preview_lbl)
@@ -762,31 +911,31 @@ class RuleDetailEditor(QWidget):
         self._alert_hint.setObjectName("RuleDetailHintLabel")
         form.addRow("", self._alert_hint)
 
-        # ── PlayEffect ────────────────────────────────────────────────────
+        vlayout.addWidget(box)
+
+        self._alert_edit.textChanged.connect(self._alert_sync_to_spins)
+        self._alert_edit.textChanged.connect(self._update_alert_preview)
+        self._alert_edit.editingFinished.connect(self._on_any_field_changed)
+        self._alert_id_spin.valueChanged.connect(self._alert_sync_from_spins)
+        self._alert_vol_spin.valueChanged.connect(self._alert_sync_from_spins)
+
+    def _build_effect_card(self, vlayout: QVBoxLayout) -> None:
+        """光柱效果 Card — PlayEffect only (P19.4A.1: separated from 音效)."""
+        box, form = self._make_card("光柱效果")
+
         self._effect_edit = QLineEdit()
         self._effect_edit.setObjectName("RuleDetailPlayEffect")
         self._effect_edit.setPlaceholderText("Red")
         form.addRow("PlayEffect", self._effect_edit)
 
-        effect_picker = QWidget()
-        effect_layout = QHBoxLayout(effect_picker)
-        effect_layout.setContentsMargins(0, 0, 0, 0)
-        effect_layout.setSpacing(6)
-
-        self._effect_color = QComboBox()
-        self._effect_color.setObjectName("EffectColorCombo")
-        self._effect_color.addItems(_MM_COLORS)
-        self._effect_color.setToolTip("特效顏色")
+        self._effect_picker = VisualEffectPicker()
+        form.addRow("顏色選擇", self._effect_picker)
 
         self._effect_temp_cb = QCheckBox("臨時(Temp)")
         self._effect_temp_cb.setObjectName("EffectTempCheck")
         self._effect_temp_cb.setToolTip("加入 Temp 關鍵字（物品拾取前效果消失）")
+        form.addRow("", self._effect_temp_cb)
 
-        effect_layout.addWidget(self._effect_color, stretch=1)
-        effect_layout.addWidget(self._effect_temp_cb)
-        form.addRow("快速選擇", effect_picker)
-
-        # Effect colour preview label
         self._effect_preview_lbl = QLabel("（未設定）")
         self._effect_preview_lbl.setObjectName("EffectPreviewLabel")
         self._effect_preview_lbl.setFixedHeight(26)
@@ -799,18 +948,10 @@ class RuleDetailEditor(QWidget):
 
         vlayout.addWidget(box)
 
-        # Connections — PlayAlertSound
-        self._alert_edit.textChanged.connect(self._alert_sync_to_spins)
-        self._alert_edit.textChanged.connect(self._update_alert_preview)
-        self._alert_edit.editingFinished.connect(self._on_any_field_changed)
-        self._alert_id_spin.valueChanged.connect(self._alert_sync_from_spins)
-        self._alert_vol_spin.valueChanged.connect(self._alert_sync_from_spins)
-
-        # Connections — PlayEffect
         self._effect_edit.textChanged.connect(self._effect_sync_to_controls)
         self._effect_edit.textChanged.connect(self._update_effect_preview)
         self._effect_edit.editingFinished.connect(self._on_any_field_changed)
-        self._effect_color.currentTextChanged.connect(self._effect_sync_from_controls)
+        self._effect_picker.effect_changed.connect(self._effect_sync_from_controls)
         self._effect_temp_cb.stateChanged.connect(self._effect_sync_from_controls)
 
     def _build_minimap_card(self, vlayout: QVBoxLayout) -> None:
@@ -822,31 +963,9 @@ class RuleDetailEditor(QWidget):
         self._minimap_edit.setPlaceholderText("1 Red Circle")
         form.addRow("MinimapIcon", self._minimap_edit)
 
-        # Quick-pick dropdowns: Size / Color / Shape
-        picker = QWidget()
-        picker_layout = QHBoxLayout(picker)
-        picker_layout.setContentsMargins(0, 0, 0, 0)
-        picker_layout.setSpacing(4)
-
-        self._mm_size = QComboBox()
-        self._mm_size.setObjectName("MinimapSizeCombo")
-        self._mm_size.addItems(_MM_SIZES)
-        self._mm_size.setToolTip("大小")
-
-        self._mm_color = QComboBox()
-        self._mm_color.setObjectName("MinimapColorCombo")
-        self._mm_color.addItems(_MM_COLORS)
-        self._mm_color.setToolTip("顏色")
-
-        self._mm_shape = QComboBox()
-        self._mm_shape.setObjectName("MinimapShapeCombo")
-        self._mm_shape.addItems(_MM_SHAPES)
-        self._mm_shape.setToolTip("形狀")
-
-        picker_layout.addWidget(self._mm_size)
-        picker_layout.addWidget(self._mm_color, stretch=1)
-        picker_layout.addWidget(self._mm_shape, stretch=1)
-        form.addRow("快速選擇", picker)
+        # Visual icon grid: Size / Color / Shape
+        self._minimap_grid = MinimapIconGrid()
+        form.addRow("圖示選擇", self._minimap_grid)
 
         # Visual icon preview
         self._mm_preview = MinimapPreviewWidget()
@@ -860,26 +979,17 @@ class RuleDetailEditor(QWidget):
         vlayout.addWidget(box)
 
         # Connections
-        self._minimap_edit.textChanged.connect(self._mm_sync_to_dropdowns)
+        self._minimap_edit.textChanged.connect(self._mm_sync_to_grid)
         self._minimap_edit.textChanged.connect(self._update_mm_preview)
         self._minimap_edit.editingFinished.connect(self._on_any_field_changed)
-        for combo in (self._mm_size, self._mm_color, self._mm_shape):
-            combo.currentTextChanged.connect(self._mm_sync_from_dropdowns)
+        self._minimap_grid.icon_changed.connect(self._mm_sync_from_grid)
 
-    def _build_preview_card(self, vlayout: QVBoxLayout) -> None:
-        box = QGroupBox("規則預覽（唯讀）")
-        box.setObjectName("RuleEditorCard")
-        box_layout = QVBoxLayout(box)
-        box_layout.setContentsMargins(8, 4, 8, 8)
-        box_layout.setSpacing(4)
-
-        self._preview_text = QPlainTextEdit()
+    def _build_preview_card(self) -> None:
+        # P19.3B: 語法預覽移至 PreviewPanel。保留 _preview_text 供測試使用。
+        self._preview_text = QPlainTextEdit(self)
         self._preview_text.setObjectName("RuleDetailPreview")
         self._preview_text.setReadOnly(True)
-        self._preview_text.setMaximumHeight(130)
-        box_layout.addWidget(self._preview_text)
-
-        vlayout.addWidget(box)
+        self._preview_text.hide()
 
     # ------------------------------------------------------------------
     # Field helpers — pure, no side effects
@@ -929,8 +1039,14 @@ class RuleDetailEditor(QWidget):
         action_idx = _ACTIONS.index(rule.action) if rule.action in _ACTIONS else 0
         self._action_combo.setCurrentIndex(action_idx)
 
-        self._class_edit.setText(self._get_from_list(rule.conditions, "Class"))
-        self._basetype_edit.setText(self._get_from_list(rule.conditions, "BaseType"))
+        class_val    = self._get_from_list(rule.conditions, "Class")
+        basetype_val = self._get_from_list(rule.conditions, "BaseType")
+        self._class_edit.setText(class_val)
+        self._basetype_edit.setText(basetype_val)
+        # P21.5 — Tooltip 顯示中文名稱
+        if self._alias_svc is not None:
+            self._class_edit.setToolTip(self._alias_svc.tooltip_class(class_val) or "")
+            self._basetype_edit.setToolTip(self._alias_svc.tooltip_basetype(basetype_val) or "")
 
         fs_raw = self._get_from_list(rule.actions, "SetFontSize")
         try:
@@ -1061,7 +1177,7 @@ class RuleDetailEditor(QWidget):
         """Parse 'R G B [A]' text and apply background colour to *swatch*."""
         if not color_text.strip():
             swatch.setStyleSheet(
-                "background: transparent; border: 1px solid #1e2435; border-radius: 2px;"
+                "background: transparent; border: 1.5px solid #1e2435; border-radius: 5px;"
             )
             return
         try:
@@ -1071,19 +1187,17 @@ class RuleDetailEditor(QWidget):
             r, g, b, a = vals
             swatch.setStyleSheet(
                 f"background: rgba({r},{g},{b},{a});"
-                "border: 1px solid #334155; border-radius: 2px;"
+                "border: 1.5px solid #334155; border-radius: 5px;"
             )
         except (ValueError, TypeError):
             swatch.setStyleSheet(
                 "background: transparent;"
-                "border: 1px dashed #ef4444; border-radius: 2px;"
+                "border: 1.5px dashed #ef4444; border-radius: 5px;"
             )
 
-    def _update_preview(self) -> None:
+    def _render_rule_text(self) -> str:
         if self._rule is None:
-            self._preview_text.setPlainText("")
-            return
-
+            return ""
         rule = self._rule
         prefix = "" if rule.enabled else "# "
         lines = [f"{prefix}{rule.action}"]
@@ -1093,8 +1207,13 @@ class RuleDetailEditor(QWidget):
             lines.append(f"    {key} {value}")
         for ul in rule.unknown_lines:
             lines.append(f"    {ul}")
+        return "\n".join(lines)
 
-        self._preview_text.setPlainText("\n".join(lines))
+    def _update_preview(self) -> None:
+        self._preview_text.setPlainText(self._render_rule_text())
+
+    def _update_raw_filter(self) -> None:
+        self._raw_filter_text.setPlainText(self._render_rule_text())
 
     def _update_title(self) -> None:
         if self._rule is None or not hasattr(self, "_title_lbl"):
@@ -1117,5 +1236,6 @@ class RuleDetailEditor(QWidget):
         updated_rule = self._build_rule_from_fields()
         self._rule = updated_rule
         self._update_preview()
+        self._update_raw_filter()
         self._update_title()
         self.rule_changed.emit(self._index, updated_rule)

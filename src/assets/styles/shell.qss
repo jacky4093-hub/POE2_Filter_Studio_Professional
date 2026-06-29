@@ -1,5 +1,5 @@
 /* ============================================================
-   POE2 Filter Studio — v4.0.0  P18.1 V4 Shell
+   POE2 Filter Studio — P19.8A Shell Polish
    Main window shell chrome: content shell, 4 columns, status bar
    ============================================================ */
 
@@ -29,26 +29,27 @@
 /* ── Rule Browser header bar ── */
 
 #RuleBrowserHeader {
-    background-color: #111827;
-    border-bottom: 1px solid #1c2845;
-    min-height: 38px;
-    max-height: 38px;
+    background-color: #0f1523;
+    border-bottom: 1px solid rgba(124,58,237,0.2);
+    min-height: 40px;
+    max-height: 40px;
 }
 
 #RuleCountLabel {
-    color: #dde4f0;
+    color: #c8d8f0;
     font-weight: bold;
-    font-size: 12px;
+    font-size: 13px;
+    letter-spacing: 0.2px;
     background: transparent;
 }
 
 /* ── Status Bar V4 ── */
 
 #StatusBarV4 {
-    background-color: #07090f;
-    border-top: 1px solid #1c2845;
-    min-height: 26px;
-    max-height: 26px;
+    background-color: #070a12;
+    border-top: 1px solid #1a2238;
+    min-height: 28px;
+    max-height: 28px;
 }
 
 #StatusFileInfo {
@@ -57,16 +58,23 @@
     background: transparent;
 }
 
+#StatusSeparator {
+    color: #253558;
+    font-size: 11px;
+    background: transparent;
+    padding: 0 6px;
+}
+
 #StatusRuleCount {
-    color: #64748b;
+    color: #556080;
     font-size: 11px;
     background: transparent;
     padding: 0 4px;
 }
 
 #StatusValidationSummary {
-    color: #64748b;
+    color: #556080;
     font-size: 11px;
     background: transparent;
-    padding: 0 6px;
+    padding: 0 4px;
 }

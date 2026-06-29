@@ -122,7 +122,7 @@ class NavigationBarV4(QWidget):
             passed:  True if no errors (warnings are OK).
             summary: Short human-readable text, e.g. "語法檢查：通過".
         """
-        prefix = "✓" if passed else "✗"
+        prefix = "✓" if passed else "⚠"
         state  = "pass" if passed else "fail"
         self._validation_chip.setText(f"{prefix}  {summary}")
         self._validation_chip.setProperty("validationState", state)

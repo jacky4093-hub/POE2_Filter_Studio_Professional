@@ -302,3 +302,126 @@ class TestIsolation:
         sidebar.update_counts(rules)
         hidden_after = [row for row in range(sidebar._list.count()) if sidebar._list.isRowHidden(row)]
         assert hidden_before == hidden_after
+
+
+# ──────────────────────────────────────────────────────────────────────
+# 6. P19.1 Emoji Icons & Text Format
+# ──────────────────────────────────────────────────────────────────────
+
+class TestP19Icons:
+    """P19.1: verify emoji mapping, text format, and backward-compat of all public API."""
+
+    def test_all_categories_have_emoji_mapping(self, qapp):
+        """Every Category in the enum must have an entry in _CATEGORY_EMOJI."""
+        from ui.category_sidebar import _CATEGORY_EMOJI
+        for cat in Category:
+            assert cat in _CATEGORY_EMOJI, f"_CATEGORY_EMOJI missing mapping for {cat}"
+
+    def test_format_item_text_contains_emoji_and_label(self, qapp):
+        """_format_item_text() must include the emoji and the Chinese label."""
+        from ui.category_sidebar import _format_item_text, _CATEGORY_EMOJI
+        for cat in Category:
+            text = _format_item_text(cat, 42)
+            assert _CATEGORY_EMOJI[cat] in text, f"Emoji missing in text for {cat}"
+            assert CATEGORY_LABELS[cat] in text, f"Label missing in text for {cat}"
+            assert "42" in text, f"Count missing in text for {cat}"
+
+    def test_format_item_text_never_crashes(self, qapp):
+        """_format_item_text() must not raise for any Category value."""
+        from ui.category_sidebar import _format_item_text
+        for cat in Category:
+            text = _format_item_text(cat, 0)
+            assert isinstance(text, str) and text, f"Must return non-empty str for {cat}"
+
+    def test_sidebar_items_contain_emoji(self, sidebar):
+        """After construction, every list item must have an emoji in its text."""
+        from ui.category_sidebar import _CATEGORY_EMOJI
+        from PySide6.QtCore import Qt
+        _ROLE = Qt.ItemDataRole.UserRole + 10
+        for row in range(sidebar._list.count()):
+            item = sidebar._list.item(row)
+            cat = item.data(_ROLE)
+            if cat is not None:
+                emoji = _CATEGORY_EMOJI.get(cat, "")
+                assert emoji in item.text(), \
+                    f"Item text for {cat} must contain emoji '{emoji}', got: {item.text()!r}"
+
+    def test_sidebar_items_contain_label(self, sidebar):
+        """After construction, every list item must contain the category label."""
+        from PySide6.QtCore import Qt
+        _ROLE = Qt.ItemDataRole.UserRole + 10
+        for row in range(sidebar._list.count()):
+            item = sidebar._list.item(row)
+            cat = item.data(_ROLE)
+            if cat is not None:
+                assert CATEGORY_LABELS[cat] in item.text(), \
+                    f"Item text for {cat} must contain label '{CATEGORY_LABELS[cat]}'"
+
+    def test_update_counts_preserves_emoji(self, sidebar):
+        """update_counts() must keep the emoji in every item's text."""
+        from ui.category_sidebar import _CATEGORY_EMOJI
+        from PySide6.QtCore import Qt
+        _ROLE = Qt.ItemDataRole.UserRole + 10
+        rules = _make_rules("Currency", "Currency", "Gems")
+        sidebar.update_counts(rules)
+        for row in range(sidebar._list.count()):
+            item = sidebar._list.item(row)
+            cat = item.data(_ROLE)
+            if cat is not None:
+                emoji = _CATEGORY_EMOJI.get(cat, "")
+                assert emoji in item.text(), \
+                    f"Emoji must remain after update_counts() for {cat}"
+
+    def test_update_counts_has_correct_count(self, sidebar):
+        """update_counts() must embed the correct count number in item text."""
+        from PySide6.QtCore import Qt
+        _ROLE = Qt.ItemDataRole.UserRole + 10
+        rules = _make_rules("Currency", "Currency", "Currency")
+        sidebar.update_counts(rules)
+        found = False
+        for row in range(sidebar._list.count()):
+            item = sidebar._list.item(row)
+            cat = item.data(_ROLE)
+            if cat == Category.CURRENCY:
+                assert "3" in item.text(), \
+                    f"Currency item must show count 3, got: {item.text()!r}"
+                found = True
+                break
+        assert found, "Currency row must exist in sidebar list"
+
+    def test_set_active_category_still_works_with_emoji_items(self, sidebar):
+        """set_active_category() must set _active correctly with new emoji item format."""
+        sidebar.set_active_category(Category.MAPS, emit_signal=False)
+        assert sidebar.active_category() == Category.MAPS
+
+    def test_category_selected_signal_still_fires_with_emoji_items(self, sidebar):
+        """category_selected must emit the correct Category with emoji item format."""
+        received = []
+        sidebar.category_selected.connect(lambda c: received.append(c))
+        sidebar.set_active_category(Category.RUNES, emit_signal=True)
+        assert Category.RUNES in received, "signal must carry Category.RUNES"
+
+    def test_search_filter_still_works_with_emoji_items(self, sidebar):
+        """Category search must still filter by label, not emoji text."""
+        sidebar._search_input.clear()
+        sidebar._search_input.setText("通貨")
+        from PySide6.QtCore import Qt
+        _ROLE = Qt.ItemDataRole.UserRole + 10
+        visible = [
+            sidebar._list.item(r).data(_ROLE)
+            for r in range(sidebar._list.count())
+            if not sidebar._list.isRowHidden(r)
+        ]
+        assert Category.CURRENCY in visible, "Currency must be visible when searching '通貨'"
+        sidebar._search_input.clear()
+
+    def test_active_filter_chip_text_unchanged(self, sidebar):
+        """Chip label must still show the plain label (no emoji) after P19.1."""
+        sidebar.set_active_category(Category.GEMS, emit_signal=False)
+        assert "技能石" in sidebar._chip_label.text()
+
+    def test_no_icon_registry_dependency(self, qapp):
+        """category_sidebar module must not import IconRegistry after P19.1."""
+        import ui.category_sidebar as mod
+        assert not hasattr(mod, "IconRegistry"), \
+            "category_sidebar must not reference IconRegistry after P19.1 emoji migration"

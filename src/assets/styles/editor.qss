@@ -138,12 +138,20 @@ QGroupBox#RuleEditorCard[title="外觀"]::title {
     color: #fbbf24;
 }
 
-/* 音效 (Audio: PlayAlertSound, PlayEffect) — purple accent */
+/* 音效 (Audio: PlayAlertSound) — purple accent */
 QGroupBox#RuleEditorCard[title="音效"] {
     border-left-color: #8b5cf6;
 }
 QGroupBox#RuleEditorCard[title="音效"]::title {
     color: #a78bfa;
+}
+
+/* 光柱效果 (PlayEffect) — cyan-blue accent */
+QGroupBox#RuleEditorCard[title="光柱效果"] {
+    border-left-color: #06b6d4;
+}
+QGroupBox#RuleEditorCard[title="光柱效果"]::title {
+    color: #22d3ee;
 }
 
 /* 小地圖 (MinimapIcon) — teal accent */
@@ -282,11 +290,15 @@ QGroupBox#RuleEditorCard QSpinBox::down-button:hover {
     background: #1e2e48;
 }
 
-/* ── Colour swatch preview V4 ── */
+/* ── Colour swatch picker (P19.7) ── */
+
+#ColorSwatchPicker {
+    background: transparent;
+}
 
 #ColorSwatch {
-    border: 1px solid #253558;
-    border-radius: 3px;
+    border: 1.5px solid #253558;
+    border-radius: 5px;
     min-width: 26px;
     max-width: 26px;
     min-height: 22px;
@@ -294,8 +306,8 @@ QGroupBox#RuleEditorCard QSpinBox::down-button:hover {
 }
 
 #ColorSwatch:hover {
-    border-color: #60a5fa;
-    border-width: 1px;
+    border-color: rgba(124,58,237,0.7);
+    border-width: 1.5px;
 }
 
 /* ── Colour pick buttons ── */
@@ -306,7 +318,7 @@ QGroupBox#RuleEditorCard QSpinBox::down-button:hover {
     background: #111827;
     color: #7e8eaf;
     border: 1px solid #1c2845;
-    border-radius: 3px;
+    border-radius: 5px;
     font-size: 11px;
     padding: 2px 6px;
     min-height: 22px;
@@ -315,16 +327,16 @@ QGroupBox#RuleEditorCard QSpinBox::down-button:hover {
 #ColorPickTextBtn:hover,
 #ColorPickBorderBtn:hover,
 #ColorPickBgBtn:hover {
-    background: #1a2640;
-    border-color: #3b82f6;
+    background: rgba(124,58,237,0.12);
+    border-color: rgba(124,58,237,0.7);
     color: #dde4f0;
 }
 
 #ColorPickTextBtn:pressed,
 #ColorPickBorderBtn:pressed,
 #ColorPickBgBtn:pressed {
-    background: #0c1424;
-    border-color: #3b82f6;
+    background: rgba(124,58,237,0.22);
+    border-color: rgba(124,58,237,0.9);
 }
 
 /* ── Minimap visual preview widget ── */
@@ -368,19 +380,10 @@ QGroupBox#RuleEditorCard QSpinBox::down-button:hover {
     min-width: 80px;
 }
 
-/* ── Minimap picker dropdowns (compact) ── */
+/* ── Minimap icon grid picker (P19.6) ── */
 
-#MinimapSizeCombo {
-    min-width: 42px;
-    max-width: 42px;
-}
-
-#MinimapColorCombo {
-    min-width: 70px;
-}
-
-#MinimapShapeCombo {
-    min-width: 100px;
+#MinimapIconGrid {
+    background: transparent;
 }
 
 /* ── Format hint labels ── */
@@ -389,6 +392,64 @@ QGroupBox#RuleEditorCard QSpinBox::down-button:hover {
     color: #253558;
     font-size: 10px;
     font-style: italic;
+}
+
+/* ── Detail Editor tab bar (P19.3A) ── */
+
+#RuleDetailTabBar {
+    background: #0b0f1a;
+    border-bottom: 1px solid #1c2845;
+}
+
+#RuleDetailTabBtn {
+    background: transparent;
+    color: #4d6080;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 16px;
+    min-height: 28px;
+}
+
+#RuleDetailTabBtn:hover {
+    background: rgba(124,58,237,0.08);
+    color: #8899bb;
+    border-color: rgba(124,58,237,0.2);
+}
+
+#RuleDetailTabBtn:checked {
+    background: rgba(124,58,237,0.2);
+    color: #c0c8f8;
+    border: 1px solid rgba(124,58,237,0.7);
+    font-weight: 700;
+}
+
+/* ── Raw Filter page (P19.3A) ── */
+
+#RuleDetailRawPage {
+    background: #07090f;
+}
+
+#RuleDetailRawFilter {
+    background: #040710;
+    color: #6a8ab0;
+    border: 1px solid #1c2845;
+    border-radius: 4px;
+    font-family: Consolas, "Cascadia Code", "Courier New", monospace;
+    font-size: 12px;
+    padding: 10px 12px;
+    line-height: 1.6;
+}
+
+#RuleDetailRawFilter QScrollBar:vertical {
+    background: #040710;
+    width: 6px;
+}
+
+#RuleDetailRawFilter QScrollBar::handle:vertical {
+    background: #1c2845;
+    border-radius: 3px;
 }
 
 /* ── Raw filter preview text area ── */
@@ -412,6 +473,16 @@ QGroupBox#RuleEditorCard QSpinBox::down-button:hover {
 #RuleDetailPreview QScrollBar::handle:vertical {
     background: #1c2845;
     border-radius: 3px;
+}
+
+/* ── Compact colour row labels (P19.3C) ── */
+
+#RuleDetailColorLabel {
+    color: #4d6080;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 0.8px;
+    background: transparent;
 }
 
 /* ── Validation Panel ── */

@@ -1017,28 +1017,26 @@ class TestP136ColorPickerDialog:
 # ---------------------------------------------------------------------------
 
 class TestP137MinimapPicker:
-    """Minimap icon picker: 3 QComboBox dropdowns that sync bidirectionally
+    """Minimap icon picker: MinimapIconGrid that syncs bidirectionally
     with the MinimapIcon text field."""
 
     # ── widgets exist ─────────────────────────────────────────────
 
-    def test_mm_size_combo_exists(self, qapp):
-        from PySide6.QtWidgets import QComboBox
+    def test_minimap_grid_exists(self, qapp):
+        from widgets.minimap_icon_grid import MinimapIconGrid
         ed = _make_editor(qapp)
-        assert hasattr(ed, "_mm_size")
-        assert isinstance(ed._mm_size, QComboBox)
+        assert hasattr(ed, "_minimap_grid")
+        assert isinstance(ed._minimap_grid, MinimapIconGrid)
 
-    def test_mm_color_combo_exists(self, qapp):
-        from PySide6.QtWidgets import QComboBox
+    def test_minimap_grid_objectname(self, qapp):
         ed = _make_editor(qapp)
-        assert hasattr(ed, "_mm_color")
-        assert isinstance(ed._mm_color, QComboBox)
+        assert ed._minimap_grid.objectName() == "MinimapIconGrid"
 
-    def test_mm_shape_combo_exists(self, qapp):
-        from PySide6.QtWidgets import QComboBox
+    def test_minimap_grid_has_size_buttons(self, qapp):
         ed = _make_editor(qapp)
-        assert hasattr(ed, "_mm_shape")
-        assert isinstance(ed._mm_shape, QComboBox)
+        assert len(ed._minimap_grid._size_buttons) == 3
+        for sv in (0, 1, 2):
+            assert sv in ed._minimap_grid._size_buttons
 
     def test_minimap_edit_still_exists(self, qapp):
         from PySide6.QtWidgets import QLineEdit
@@ -1046,44 +1044,39 @@ class TestP137MinimapPicker:
         assert hasattr(ed, "_minimap_edit")
         assert isinstance(ed._minimap_edit, QLineEdit)
 
-    # ── combo items ───────────────────────────────────────────────
+    # ── grid items ────────────────────────────────────────────────
 
-    def test_size_items_are_0_1_2(self, qapp):
+    def test_grid_color_buttons_include_expected(self, qapp):
         ed = _make_editor(qapp)
-        sizes = [ed._mm_size.itemText(i) for i in range(ed._mm_size.count())]
-        assert sizes == ["0", "1", "2"]
-
-    def test_color_items_include_expected(self, qapp):
-        ed = _make_editor(qapp)
-        colors = [ed._mm_color.itemText(i) for i in range(ed._mm_color.count())]
+        colors = set(ed._minimap_grid._color_buttons.keys())
         for c in ("Red", "Green", "Blue", "White", "Yellow", "Cyan",
                   "Grey", "Orange", "Pink", "Purple", "Brown"):
             assert c in colors, f"missing color: {c}"
 
-    def test_shape_items_include_expected(self, qapp):
+    def test_grid_shape_buttons_include_expected(self, qapp):
         ed = _make_editor(qapp)
-        shapes = [ed._mm_shape.itemText(i) for i in range(ed._mm_shape.count())]
+        shapes = set(ed._minimap_grid._shape_buttons.keys())
         for s in ("Circle", "Diamond", "Hexagon", "Square", "Star",
                   "Triangle", "Cross", "Moon", "Raindrop", "Kite",
                   "Pentagon", "UpsideDownHouse"):
             assert s in shapes, f"missing shape: {s}"
 
-    # ── set_rule syncs dropdowns ──────────────────────────────────
+    # ── set_rule syncs grid ───────────────────────────────────────
 
     def test_set_rule_syncs_size(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["MinimapIcon", "2 Blue Star"]]), index=0)
-        assert ed._mm_size.currentText() == "2"
+        assert ed._minimap_grid.value()[0] == 2
 
     def test_set_rule_syncs_color(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
-        assert ed._mm_color.currentText() == "Red"
+        assert ed._minimap_grid.value()[1] == "Red"
 
     def test_set_rule_syncs_shape(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["MinimapIcon", "0 Green Diamond"]]), index=0)
-        assert ed._mm_shape.currentText() == "Diamond"
+        assert ed._minimap_grid.value()[2] == "Diamond"
 
     def test_set_rule_does_not_emit(self, qapp):
         ed = _make_editor(qapp)
@@ -1093,48 +1086,48 @@ class TestP137MinimapPicker:
 
     def test_set_rule_invalid_minimap_does_not_crash(self, qapp):
         ed = _make_editor(qapp)
-        # invalid text — dropdowns stay at defaults, no exception
+        # invalid text — grid stays at defaults, no exception
         ed.set_rule(_rule(actions=[["MinimapIcon", "not valid"]]), index=0)
         assert ed._minimap_edit.text() == "not valid"
 
-    def test_set_rule_invalid_does_not_change_dropdowns(self, qapp):
+    def test_set_rule_invalid_keeps_grid_defaults(self, qapp):
+        from widgets.minimap_icon_grid import _DEFAULT_SIZE, _DEFAULT_COLOR, _DEFAULT_SHAPE
         ed = _make_editor(qapp)
-        default_size = ed._mm_size.currentText()
         ed.set_rule(_rule(actions=[["MinimapIcon", "bad"]]), index=0)
-        assert ed._mm_size.currentText() == default_size
+        assert ed._minimap_grid.value() == (_DEFAULT_SIZE, _DEFAULT_COLOR, _DEFAULT_SHAPE)
 
     def test_set_rule_empty_minimap_does_not_crash(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(), index=0)
         assert ed._minimap_edit.text() == ""
 
-    # ── dropdown → text (selector changes write text) ─────────────
+    # ── grid → text (grid changes write text) ────────────────────
 
     def test_size_change_writes_text(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
-        ed._mm_size.setCurrentText("2")
+        ed._minimap_grid.set_value(2, "Red", "Circle")
         assert ed._minimap_edit.text() == "2 Red Circle"
 
     def test_color_change_writes_text(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
-        ed._mm_color.setCurrentText("Blue")
+        ed._minimap_grid.set_value(1, "Blue", "Circle")
         assert ed._minimap_edit.text() == "1 Blue Circle"
 
     def test_shape_change_writes_text(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
-        ed._mm_shape.setCurrentText("Star")
+        ed._minimap_grid.set_value(1, "Red", "Star")
         assert ed._minimap_edit.text() == "1 Red Star"
 
-    # ── dropdown → emit ───────────────────────────────────────────
+    # ── grid → emit ───────────────────────────────────────────────
 
     def test_size_change_emits_rule_changed(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
         received = _collect_signals(ed)
-        ed._mm_size.setCurrentText("0")
+        ed._minimap_grid.set_value(0, "Red", "Circle")
         assert len(received) == 1
         _idx, updated = received[0]
         mm_vals = [v for k, v in updated.actions if k == "MinimapIcon"]
@@ -1144,47 +1137,47 @@ class TestP137MinimapPicker:
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
         received = _collect_signals(ed)
-        ed._mm_color.setCurrentText("Green")
+        ed._minimap_grid.set_value(1, "Green", "Circle")
         assert len(received) == 1
 
     def test_shape_change_emits_rule_changed(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
         received = _collect_signals(ed)
-        ed._mm_shape.setCurrentText("Triangle")
+        ed._minimap_grid.set_value(1, "Red", "Triangle")
         assert len(received) == 1
 
-    # ── text → dropdowns (manual input syncs selectors) ──────────
+    # ── text → grid (manual input syncs grid) ────────────────────
 
     def test_manual_valid_text_syncs_size(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(), index=0)
         ed._minimap_edit.setText("2 Blue Star")
-        assert ed._mm_size.currentText() == "2"
+        assert ed._minimap_grid.value()[0] == 2
 
     def test_manual_valid_text_syncs_color(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(), index=0)
         ed._minimap_edit.setText("2 Blue Star")
-        assert ed._mm_color.currentText() == "Blue"
+        assert ed._minimap_grid.value()[1] == "Blue"
 
     def test_manual_valid_text_syncs_shape(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(), index=0)
         ed._minimap_edit.setText("2 Blue Star")
-        assert ed._mm_shape.currentText() == "Star"
+        assert ed._minimap_grid.value()[2] == "Star"
 
     def test_manual_invalid_text_does_not_crash(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(), index=0)
         ed._minimap_edit.setText("not valid at all")
-        # no crash, dropdowns unchanged
+        # no crash, grid unchanged
 
     def test_manual_partial_text_does_not_crash(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(), index=0)
         ed._minimap_edit.setText("1")
-        # no crash, dropdowns unchanged
+        # no crash, grid unchanged
 
     def test_manual_text_does_not_emit_until_editing_finished(self, qapp):
         ed = _make_editor(qapp)
@@ -1196,19 +1189,19 @@ class TestP137MinimapPicker:
 
     # ── no circular loop ─────────────────────────────────────────
 
-    def test_no_loop_on_dropdown_change(self, qapp):
-        """Changing a dropdown must not trigger infinite signal recursion."""
+    def test_no_loop_on_grid_change(self, qapp):
+        """Changing the grid must not trigger infinite signal recursion."""
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
         received = _collect_signals(ed)
-        ed._mm_shape.setCurrentText("Moon")
+        ed._minimap_grid.set_value(1, "Red", "Moon")
         # exactly one emit, not many
         assert len(received) == 1
 
     def test_mm_syncing_flag_resets_after_change(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
-        ed._mm_size.setCurrentText("0")
+        ed._minimap_grid.set_value(0, "Red", "Circle")
         assert ed._mm_syncing is False
 
     # ── _mm_parse module-level helper ────────────────────────────
@@ -1803,19 +1796,19 @@ class TestP154MinimapPreviewOnEditor:
     def test_combo_change_updates_preview(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
-        ed._mm_color.setCurrentText("Blue")
+        ed._minimap_grid.set_value(1, "Blue", "Circle")
         assert ed._mm_preview._color == "Blue"
 
     def test_combo_shape_change_updates_preview(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
-        ed._mm_shape.setCurrentText("Star")
+        ed._minimap_grid.set_value(1, "Red", "Star")
         assert ed._mm_preview._shape == "Star"
 
     def test_combo_size_change_updates_preview(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
-        ed._mm_size.setCurrentText("0")
+        ed._minimap_grid.set_value(0, "Red", "Circle")
         assert ed._mm_preview._size == "0"
 
     def test_invalid_text_does_not_raise(self, qapp):
@@ -1846,6 +1839,103 @@ class TestP154MinimapPreviewColorsDict:
             assert len(rgb) == 3, f"{name}: expected (R,G,B)"
             for ch in rgb:
                 assert 0 <= ch <= 255, f"{name}: channel {ch} out of range"
+
+
+# ===========================================================================
+# TestP196MinimapIconGrid  (P19.6 新增)
+# ===========================================================================
+
+class TestP196MinimapIconGrid:
+    """Editor-level integration tests for MinimapIconGrid (P19.6)."""
+
+    def test_editor_loads_minimap_icon_into_grid(self, qapp):
+        """set_rule() with valid MinimapIcon should sync grid to correct values."""
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "2 Blue Star"]]), index=0)
+        size, color, shape = ed._minimap_grid.value()
+        assert size == 2
+        assert color == "Blue"
+        assert shape == "Star"
+
+    def test_editor_exports_minimap_icon_from_grid(self, qapp):
+        """Changing grid then building rule should produce correct MinimapIcon value."""
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        ed._minimap_grid.set_value(0, "Purple", "Moon")
+        built = ed._build_rule_from_fields()
+        mm_vals = [v for k, v in built.actions if k == "MinimapIcon"]
+        assert mm_vals == ["0 Purple Moon"]
+
+    def test_editor_minimap_change_emits_rule_changed(self, qapp):
+        """Grid interaction should trigger rule_changed signal."""
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        received = _collect_signals(ed)
+        ed._minimap_grid.set_value(2, "Cyan", "Diamond")
+        assert len(received) == 1
+
+    def test_editor_minimap_preview_updates(self, qapp):
+        """Grid change should update the MinimapPreviewWidget."""
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["MinimapIcon", "1 Red Circle"]]), index=0)
+        ed._minimap_grid.set_value(1, "Green", "Triangle")
+        assert ed._mm_preview._color == "Green"
+        assert ed._mm_preview._shape == "Triangle"
+
+
+# ===========================================================================
+# TestP197ColorSwatchPicker  (P19.7 新增)
+# ===========================================================================
+
+class TestP197ColorSwatchPicker:
+    """Editor-level integration tests for ColorSwatchPicker (P19.7)."""
+
+    def test_editor_loads_text_color(self, qapp):
+        """set_rule() with SetTextColor should populate _textcolor_picker."""
+        from widgets.color_swatch_picker import ColorSwatchPicker
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetTextColor", "255 0 0 255"]]), index=0)
+        assert isinstance(ed._textcolor_picker, ColorSwatchPicker)
+        assert ed._textcolor_picker.value() == "255 0 0 255"
+
+    def test_editor_loads_border_color(self, qapp):
+        """set_rule() with SetBorderColor should populate _bordercolor_picker."""
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetBorderColor", "0 128 255 200"]]), index=0)
+        assert ed._bordercolor_picker.value() == "0 128 255 200"
+
+    def test_editor_loads_background_color(self, qapp):
+        """set_rule() with SetBackgroundColor should populate _bgcolor_picker."""
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetBackgroundColor", "30 30 30 180"]]), index=0)
+        assert ed._bgcolor_picker.value() == "30 30 30 180"
+
+    def test_editor_exports_colors(self, qapp):
+        """Changing color pickers then building rule produces correct output."""
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[
+            ["SetTextColor", "255 0 0 255"],
+            ["SetBorderColor", "0 255 0 255"],
+            ["SetBackgroundColor", "0 0 255 200"],
+        ]), index=0)
+        ed._textcolor_picker.set_value("10 20 30 200")
+        built = ed._build_rule_from_fields()
+        tc_vals = [v for k, v in built.actions if k == "SetTextColor"]
+        assert tc_vals == ["10 20 30 200"]
+
+    def test_editor_color_change_emits_rule_changed(self, qapp, monkeypatch):
+        """Accepting the color dialog triggers rule_changed via _on_swatch_clicked."""
+        from PySide6.QtGui import QColor
+        ed = _make_editor(qapp)
+        ed.set_rule(_rule(actions=[["SetTextColor", "255 0 0 255"]]), index=0)
+        received = _collect_signals(ed)
+        chosen = QColor(10, 20, 30, 200)
+        monkeypatch.setattr(ed, "_choose_color", lambda fk, ct: chosen)
+        ed._textcolor_picker._btn.click()
+        assert len(received) == 1
+        _idx, updated = received[0]
+        tc_vals = [v for k, v in updated.actions if k == "SetTextColor"]
+        assert tc_vals == ["10 20 30 200"]
 
 
 # ===========================================================================
@@ -1969,21 +2059,21 @@ class TestP155PlayEffectWidgets:
         ed = _make_editor(qapp)
         assert ed._effect_edit.objectName() == "RuleDetailPlayEffect"
 
-    def test_effect_color_combo_exists(self, qapp):
-        from PySide6.QtWidgets import QComboBox
+    def test_effect_picker_exists(self, qapp):
+        from widgets.visual_effect_picker import VisualEffectPicker
         ed = _make_editor(qapp)
-        assert hasattr(ed, "_effect_color")
-        assert isinstance(ed._effect_color, QComboBox)
+        assert hasattr(ed, "_effect_picker")
+        assert isinstance(ed._effect_picker, VisualEffectPicker)
 
-    def test_effect_color_combo_objectname(self, qapp):
+    def test_effect_picker_objectname(self, qapp):
         ed = _make_editor(qapp)
-        assert ed._effect_color.objectName() == "EffectColorCombo"
+        assert ed._effect_picker.objectName() == "VisualEffectPicker"
 
-    def test_effect_color_combo_has_all_colors(self, qapp):
+    def test_effect_picker_has_eight_buttons(self, qapp):
+        from widgets.visual_effect_picker import _EFFECT_COLORS
         ed = _make_editor(qapp)
-        items = [ed._effect_color.itemText(i) for i in range(ed._effect_color.count())]
-        for color in _MM_COLORS:
-            assert color in items
+        for color in _EFFECT_COLORS:
+            assert color in ed._effect_picker._buttons
 
     def test_effect_temp_cb_exists(self, qapp):
         from PySide6.QtWidgets import QCheckBox
@@ -2013,10 +2103,10 @@ class TestP155PlayEffectWidgets:
 class TestP155PlayEffectSync:
     """PlayEffect text ↔ controls ↔ preview synchronization."""
 
-    def test_valid_text_updates_color_combo(self, qapp):
+    def test_valid_text_updates_picker(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["PlayEffect", "Blue"]]), index=0)
-        assert ed._effect_color.currentText() == "Blue"
+        assert ed._effect_picker.value() == "Blue"
 
     def test_valid_text_with_temp_checks_checkbox(self, qapp):
         ed = _make_editor(qapp)
@@ -2028,12 +2118,12 @@ class TestP155PlayEffectSync:
         ed.set_rule(_rule(actions=[["PlayEffect", "Green"]]), index=0)
         assert ed._effect_temp_cb.isChecked() is False
 
-    def test_invalid_text_does_not_update_combo(self, qapp):
+    def test_invalid_text_does_not_update_picker(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["PlayEffect", "Blue"]]), index=0)
         ed._effect_edit.setText("NotAColor")
-        # combo stays at last valid value
-        assert ed._effect_color.currentText() == "Blue"
+        # picker stays at last valid value
+        assert ed._effect_picker.value() == "Blue"
 
     def test_empty_text_does_not_crash(self, qapp):
         ed = _make_editor(qapp)
@@ -2042,10 +2132,10 @@ class TestP155PlayEffectSync:
         # no crash; preview shows unset
         assert "未設定" in ed._effect_preview_lbl.text()
 
-    def test_color_combo_change_updates_text(self, qapp):
+    def test_picker_change_updates_text(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["PlayEffect", "Red"]]), index=0)
-        ed._effect_color.setCurrentText("Purple")
+        ed._effect_picker.set_value("Purple")
         assert "Purple" in ed._effect_edit.text()
 
     def test_temp_checkbox_adds_temp_to_text(self, qapp):
@@ -2105,10 +2195,10 @@ class TestP155PlayEffectSync:
         # empty text → PlayEffect not saved
         assert ed._effect_edit.text() == ""
 
-    def test_effect_combo_change_emits_rule_changed(self, qapp):
+    def test_effect_picker_change_emits_rule_changed(self, qapp):
         ed = _make_editor(qapp)
         ed.set_rule(_rule(actions=[["PlayEffect", "Red"]]), index=0)
         emitted = []
         ed.rule_changed.connect(lambda i, r: emitted.append(r))
-        ed._effect_color.setCurrentText("Green")
+        ed._effect_picker.set_value("Green")
         assert len(emitted) >= 1

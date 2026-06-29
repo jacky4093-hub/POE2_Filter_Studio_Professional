@@ -1,0 +1,407 @@
+{
+  "_meta": {
+    "schema_version": "1.1",
+    "language": "zh-TW",
+    "game": "POE2",
+    "description": "繁體中文 POE2 Filter alias database — 手動維護，高頻物品優先",
+    "item_count": 258,
+    "last_updated": "2026-06-29",
+    "changelog": "P21.3 新增 unique/base_type/waystone/tablet/essence/rune/catalyst，id 欄位加入所有項目"
+  },
+
+  "categories": {
+    "currency": {
+      "zh": "通貨", "zh_short": "通貨",
+      "en_class": ["Stackable Currency", "Currency"], "priority": 1
+    },
+    "waystone": {
+      "zh": "傳送石", "zh_short": "地圖",
+      "en_class": ["Waystone"], "priority": 2,
+      "note": "POE2 地圖系統"
+    },
+    "tablet": {
+      "zh": "石板", "zh_short": "石板",
+      "en_class": ["Tablet"], "priority": 2
+    },
+    "unique": {
+      "zh": "傳說裝備", "zh_short": "傳說",
+      "en_class": [], "priority": 3,
+      "note": "傳說物品跨所有 Class，以 BaseType 匹配"
+    },
+    "essence": {
+      "zh": "精華", "zh_short": "精華",
+      "en_class": ["Stackable Currency"], "priority": 3
+    },
+    "rune": {
+      "zh": "符文", "zh_short": "符文",
+      "en_class": ["Rune"], "priority": 3
+    },
+    "catalyst": {
+      "zh": "催化劑", "zh_short": "催化劑",
+      "en_class": ["Stackable Currency"], "priority": 4
+    },
+    "base_type": {
+      "zh": "基底類型", "zh_short": "基底",
+      "en_class": [], "priority": 6,
+      "note": "各裝備基底類型，以 BaseType 匹配"
+    },
+    "body_armour": {
+      "zh": "胸甲", "zh_short": "胸甲",
+      "en_class": ["Body Armour"], "priority": 4
+    },
+    "helmet": {
+      "zh": "頭盔", "zh_short": "頭盔",
+      "en_class": ["Helmet"], "priority": 4
+    },
+    "gloves": {
+      "zh": "手套", "zh_short": "手套",
+      "en_class": ["Gloves"], "priority": 4
+    },
+    "boots": {
+      "zh": "鞋子", "zh_short": "鞋子",
+      "en_class": ["Boots"], "priority": 4
+    },
+    "shield": {
+      "zh": "盾牌", "zh_short": "盾",
+      "en_class": ["Shield"], "priority": 4
+    },
+    "weapon": {
+      "zh": "武器", "zh_short": "武器",
+      "en_class": ["One Hand Sword","Two Hand Sword","Bow","Staff","Axe","Mace","Claw","Dagger","Wand","Sceptre","Spear","Flail"],
+      "priority": 3
+    },
+    "jewel": {
+      "zh": "珠寶", "zh_short": "珠寶",
+      "en_class": ["Jewel"], "priority": 5
+    },
+    "gem": {
+      "zh": "技能寶石", "zh_short": "寶石",
+      "en_class": ["Skill Gem", "Support Skill Gem"], "priority": 6
+    },
+    "flask": {
+      "zh": "藥劑", "zh_short": "藥劑",
+      "en_class": ["Life Flask", "Mana Flask", "Utility Flask"], "priority": 7
+    },
+    "distilled": {
+      "zh": "淬鍊精華", "zh_short": "淬鍊",
+      "en_class": ["Stackable Currency"], "priority": 2,
+      "note": "POE2 特有物品，屬於 Stackable Currency Class"
+    },
+    "sanctum": {
+      "zh": "聖殿", "zh_short": "聖殿",
+      "en_class": ["Sanctum Relic"], "priority": 8
+    }
+  },
+
+  "conditions": {
+    "Class":      { "zh": "類別",      "type": "string" },
+    "BaseType":   { "zh": "物品名稱",  "type": "string" },
+    "Rarity": {
+      "zh": "稀有度", "type": "enum",
+      "enum_values": { "普通": "Normal", "魔法": "Magic", "稀有": "Rare", "傳說": "Unique", "獨特": "Unique" }
+    },
+    "ItemLevel":    { "zh": "物品等級",   "type": "numeric" },
+    "DropLevel":    { "zh": "掉落等級",   "type": "numeric" },
+    "Quality":      { "zh": "品質",       "type": "numeric" },
+    "AreaLevel":    { "zh": "區域等級",   "type": "numeric" },
+    "WaystoneTier": { "zh": "傳送石階層", "type": "numeric", "note": "POE2 地圖系統專用" },
+    "MapTier":      { "zh": "地圖階層",   "type": "numeric" },
+    "Identified":   { "zh": "已鑑定",     "type": "bool" },
+    "Corrupted":    { "zh": "已損壞",     "type": "bool" },
+    "Mirrored":     { "zh": "鏡像",       "type": "bool" },
+    "StackSize":    { "zh": "堆疊數量",   "type": "numeric" },
+    "Sockets":      { "zh": "插槽數",     "type": "numeric" },
+    "GemLevel":     { "zh": "寶石等級",   "type": "numeric" }
+  },
+
+  "items": [
+    { "id": "chaos-orb",            "zh": "混沌石",          "en": "Chaos Orb",            "aliases_zh": ["混沌","c","chaos","混"],                      "category": "currency",  "priority": 1 },
+    { "id": "divine-orb",           "zh": "神聖石",          "en": "Divine Orb",            "aliases_zh": ["神聖","神石","div","divine","神"],             "category": "currency",  "priority": 1 },
+    { "id": "exalted-orb",          "zh": "崇高石",          "en": "Exalted Orb",           "aliases_zh": ["崇高","ex","exalt","e"],                       "category": "currency",  "priority": 1 },
+    { "id": "mirror-of-kalandra",   "zh": "卡蘭德的魔鏡",    "en": "Mirror of Kalandra",    "aliases_zh": ["鏡子","魔鏡","mirror","mir","鏡"],             "category": "currency",  "priority": 1 },
+    { "id": "vaal-orb",             "zh": "瓦爾石",          "en": "Vaal Orb",              "aliases_zh": ["瓦爾","vaal","v"],                             "category": "currency",  "priority": 1 },
+    { "id": "orb-of-annulment",     "zh": "無效石",          "en": "Orb of Annulment",      "aliases_zh": ["無效","破滅石","annul"],                       "category": "currency",  "priority": 1 },
+    { "id": "regal-orb",            "zh": "王家石",          "en": "Regal Orb",             "aliases_zh": ["王家","regal"],                                "category": "currency",  "priority": 1 },
+    { "id": "gemcutters-prism",     "zh": "寶石切割師稜鏡",  "en": "Gemcutter's Prism",     "aliases_zh": ["GCP","gcp","寶石稜鏡","切割師稜鏡"],           "category": "currency",  "priority": 1 },
+    { "id": "orb-of-alchemy",       "zh": "煉金石",          "en": "Orb of Alchemy",        "aliases_zh": ["煉金","alch","alchemy"],                       "category": "currency",  "priority": 2 },
+    { "id": "orb-of-alteration",    "zh": "工匠石",          "en": "Orb of Alteration",     "aliases_zh": ["工匠","alt","alteration"],                     "category": "currency",  "priority": 2 },
+    { "id": "orb-of-transmutation", "zh": "蛻變石",          "en": "Orb of Transmutation",  "aliases_zh": ["蛻變","tran","trans"],                         "category": "currency",  "priority": 2 },
+    { "id": "orb-of-augmentation",  "zh": "擴充石",          "en": "Orb of Augmentation",   "aliases_zh": ["擴充","aug","增益石"],                         "category": "currency",  "priority": 2 },
+    { "id": "orb-of-chance",        "zh": "機會石",          "en": "Orb of Chance",         "aliases_zh": ["機會","chance"],                               "category": "currency",  "priority": 2 },
+    { "id": "orb-of-scouring",      "zh": "淨化石",          "en": "Orb of Scouring",       "aliases_zh": ["淨化","scour"],                                "category": "currency",  "priority": 2 },
+    { "id": "blessed-orb",          "zh": "祝福石",          "en": "Blessed Orb",           "aliases_zh": ["祝福","bless"],                                "category": "currency",  "priority": 2 },
+    { "id": "blacksmiths-whetstone","zh": "磨刀石",          "en": "Blacksmith's Whetstone","aliases_zh": ["磨刀","whetstone","whet"],                     "category": "currency",  "priority": 2 },
+    { "id": "armourers-scrap",      "zh": "護甲碎片",        "en": "Armourer's Scrap",      "aliases_zh": ["護甲碎","scrap"],                              "category": "currency",  "priority": 2 },
+    { "id": "glassblowers-bauble",  "zh": "吹管石",          "en": "Glassblower's Bauble",  "aliases_zh": ["吹管","bauble"],                               "category": "currency",  "priority": 2 },
+    { "id": "scroll-of-wisdom",     "zh": "鑑定卷軸",        "en": "Scroll of Wisdom",      "aliases_zh": ["鑑定","wisdom","wis","卷軸"],                  "category": "currency",  "priority": 3 },
+    { "id": "greater-jewellers-orb","zh": "大型珠寶商石",    "en": "Greater Jeweller's Orb","aliases_zh": ["大珠寶商","greater jeweller","大珠寶"],         "category": "currency",  "priority": 1, "note": "TODO: 確認 POE2 BaseType" },
+    { "id": "perfect-jewellers-orb","zh": "完美珠寶商石",    "en": "Perfect Jeweller's Orb","aliases_zh": ["完美珠寶商","perfect jeweller","完美珠寶"],     "category": "currency",  "priority": 1, "note": "TODO: 確認 POE2 BaseType" },
+    { "id": "artificers-orb",       "zh": "工藝石",          "en": "Artificer's Orb",       "aliases_zh": ["工藝","artificer","插槽石"],                   "category": "currency",  "priority": 2 },
+
+    { "id": "distilled-fear",       "zh": "淬鍊之恐懼", "en": "Distilled Fear",       "aliases_zh": ["恐懼","fear","淬鍊恐懼"],         "category": "distilled", "priority": 2 },
+    { "id": "distilled-greed",      "zh": "淬鍊之貪婪", "en": "Distilled Greed",      "aliases_zh": ["貪婪","greed","淬鍊貪婪"],        "category": "distilled", "priority": 2 },
+    { "id": "distilled-guilt",      "zh": "淬鍊之罪惡", "en": "Distilled Guilt",      "aliases_zh": ["罪惡","guilt","淬鍊罪惡"],        "category": "distilled", "priority": 2 },
+    { "id": "distilled-disgust",    "zh": "淬鍊之厭惡", "en": "Distilled Disgust",    "aliases_zh": ["厭惡","disgust","淬鍊厭惡"],      "category": "distilled", "priority": 2 },
+    { "id": "distilled-ire",        "zh": "淬鍊之憤怒", "en": "Distilled Ire",        "aliases_zh": ["憤怒","ire","淬鍊憤怒"],          "category": "distilled", "priority": 2 },
+    { "id": "distilled-suffering",  "zh": "淬鍊之痛苦", "en": "Distilled Suffering",  "aliases_zh": ["痛苦","suffering","淬鍊痛苦"],    "category": "distilled", "priority": 2 },
+    { "id": "distilled-envy",       "zh": "淬鍊之嫉妒", "en": "Distilled Envy",       "aliases_zh": ["嫉妒","envy","淬鍊嫉妒"],        "category": "distilled", "priority": 2 },
+    { "id": "distilled-paranoia",   "zh": "淬鍊之偏執", "en": "Distilled Paranoia",   "aliases_zh": ["偏執","paranoia","淬鍊偏執"],     "category": "distilled", "priority": 2 },
+    { "id": "distilled-isolation",  "zh": "淬鍊之孤立", "en": "Distilled Isolation",  "aliases_zh": ["孤立","isolation","淬鍊孤立"],   "category": "distilled", "priority": 2 },
+    { "id": "distilled-despair",    "zh": "淬鍊之絕望", "en": "Distilled Despair",    "aliases_zh": ["絕望","despair","淬鍊絕望"],     "category": "distilled", "priority": 2 },
+
+    { "id": "waystone-cemetery",       "zh": "墓地傳送石",       "en": "Cemetery Waystone",          "aliases_zh": ["墓地","cemetery map"],                   "category": "waystone", "priority": 3, "note": "TODO: verify POE2 tier" },
+    { "id": "waystone-crimson-town",   "zh": "緋紅城鎮傳送石",   "en": "Crimson Township Waystone",  "aliases_zh": ["緋紅城鎮","crimson township"],            "category": "waystone", "priority": 3 },
+    { "id": "waystone-clearing",       "zh": "空地傳送石",       "en": "Clearing Waystone",          "aliases_zh": ["空地","clearing"],                       "category": "waystone", "priority": 3 },
+    { "id": "waystone-mud-flats",      "zh": "泥灘傳送石",       "en": "Mud Flats Waystone",         "aliases_zh": ["泥灘","mud flats"],                      "category": "waystone", "priority": 3 },
+    { "id": "waystone-beach",          "zh": "海灘傳送石",       "en": "Beach Waystone",             "aliases_zh": ["海灘","beach"],                          "category": "waystone", "priority": 3 },
+    { "id": "waystone-dunes",          "zh": "沙丘傳送石",       "en": "Dunes Waystone",             "aliases_zh": ["沙丘","dunes"],                          "category": "waystone", "priority": 3 },
+    { "id": "waystone-desert",         "zh": "沙漠傳送石",       "en": "Desert Waystone",            "aliases_zh": ["沙漠","desert"],                         "category": "waystone", "priority": 3 },
+    { "id": "waystone-canyon",         "zh": "峽谷傳送石",       "en": "Canyon Waystone",            "aliases_zh": ["峽谷","canyon"],                         "category": "waystone", "priority": 3 },
+    { "id": "waystone-fortress",       "zh": "堡壘傳送石",       "en": "Fortress Waystone",          "aliases_zh": ["堡壘","fortress"],                       "category": "waystone", "priority": 2 },
+    { "id": "waystone-jungle-valley",  "zh": "叢林谷地傳送石",   "en": "Jungle Valley Waystone",     "aliases_zh": ["叢林谷地","jungle valley"],               "category": "waystone", "priority": 2 },
+    { "id": "waystone-ossuary",        "zh": "骨灰墓室傳送石",   "en": "Ossuary Waystone",           "aliases_zh": ["骨灰墓室","ossuary"],                    "category": "waystone", "priority": 2 },
+    { "id": "waystone-vaults",         "zh": "金庫傳送石",       "en": "Vaults of Atziri Waystone",  "aliases_zh": ["金庫","vaults","vaults of atziri"],       "category": "waystone", "priority": 1 },
+    { "id": "waystone-bog",            "zh": "沼澤傳送石",       "en": "Bog Waystone",               "aliases_zh": ["沼澤","bog"],                             "category": "waystone", "priority": 3 },
+    { "id": "waystone-savanna",        "zh": "熱帶草原傳送石",   "en": "Savanna Waystone",           "aliases_zh": ["熱帶草原","savanna"],                    "category": "waystone", "priority": 3 },
+    { "id": "waystone-caldera",        "zh": "火山口傳送石",     "en": "Caldera Waystone",           "aliases_zh": ["火山口","caldera"],                      "category": "waystone", "priority": 2 },
+    { "id": "waystone-dungeon",        "zh": "地下城傳送石",     "en": "Dungeon Waystone",           "aliases_zh": ["地下城","dungeon"],                      "category": "waystone", "priority": 2 },
+    { "id": "waystone-mausoleum",      "zh": "陵墓傳送石",       "en": "Mausoleum Waystone",         "aliases_zh": ["陵墓","mausoleum"],                      "category": "waystone", "priority": 2 },
+    { "id": "waystone-ancient-ruins",  "zh": "古代遺跡傳送石",   "en": "Ancient Ruins Waystone",     "aliases_zh": ["古代遺跡","ancient ruins"],               "category": "waystone", "priority": 2 },
+    { "id": "waystone-temple",         "zh": "神殿傳送石",       "en": "Temple Waystone",            "aliases_zh": ["神殿","temple"],                         "category": "waystone", "priority": 2 },
+    { "id": "waystone-ziggurat",       "zh": "金字神塔傳送石",   "en": "Ziggurat Waystone",          "aliases_zh": ["金字神塔","ziggurat"],                   "category": "waystone", "priority": 1 },
+
+    { "id": "tablet-precursor",  "zh": "先驅者石板", "en": "Precursor Tablet",  "aliases_zh": ["先驅石板","precursor tablet","先驅"],     "category": "tablet", "priority": 2 },
+    { "id": "tablet-breach",     "zh": "裂隙石板",   "en": "Breach Tablet",     "aliases_zh": ["裂隙石板","breach tablet","裂隙板"],       "category": "tablet", "priority": 2 },
+    { "id": "tablet-delirium",   "zh": "迷境石板",   "en": "Delirium Tablet",   "aliases_zh": ["迷境石板","delirium tablet","迷境板"],     "category": "tablet", "priority": 2 },
+    { "id": "tablet-expedition", "zh": "遠征石板",   "en": "Expedition Tablet", "aliases_zh": ["遠征石板","expedition tablet","遠征板"],   "category": "tablet", "priority": 2 },
+    { "id": "tablet-ritual",     "zh": "儀式石板",   "en": "Ritual Tablet",     "aliases_zh": ["儀式石板","ritual tablet","儀式板"],       "category": "tablet", "priority": 2 },
+    { "id": "tablet-legion",     "zh": "軍團石板",   "en": "Legion Tablet",     "aliases_zh": ["軍團石板","legion tablet","軍團板"],       "category": "tablet", "priority": 2 },
+    { "id": "tablet-blight",     "zh": "枯萎石板",   "en": "Blight Tablet",     "aliases_zh": ["枯萎石板","blight tablet","枯萎板"],       "category": "tablet", "priority": 3 },
+    { "id": "tablet-abyss",      "zh": "深淵石板",   "en": "Abyss Tablet",      "aliases_zh": ["深淵石板","abyss tablet","深淵板"],        "category": "tablet", "priority": 3 },
+
+    { "id": "essence-weeping-anger",    "zh": "哭泣的憤怒精華",   "en": "Weeping Essence of Anger",    "aliases_zh": ["哭泣憤怒","weeping anger"],    "category": "essence", "priority": 3 },
+    { "id": "essence-weeping-contempt", "zh": "哭泣的蔑視精華",   "en": "Weeping Essence of Contempt", "aliases_zh": ["哭泣蔑視","weeping contempt"], "category": "essence", "priority": 3 },
+    { "id": "essence-weeping-doubt",    "zh": "哭泣的疑惑精華",   "en": "Weeping Essence of Doubt",    "aliases_zh": ["哭泣疑惑","weeping doubt"],    "category": "essence", "priority": 3 },
+    { "id": "essence-weeping-envy",     "zh": "哭泣的羨慕精華",   "en": "Weeping Essence of Envy",     "aliases_zh": ["哭泣羨慕","weeping envy"],     "category": "essence", "priority": 3 },
+    { "id": "essence-weeping-fear",     "zh": "哭泣的恐懼精華",   "en": "Weeping Essence of Fear",     "aliases_zh": ["哭泣恐懼","weeping fear"],     "category": "essence", "priority": 3 },
+    { "id": "essence-weeping-greed",    "zh": "哭泣的貪婪精華",   "en": "Weeping Essence of Greed",    "aliases_zh": ["哭泣貪婪","weeping greed"],    "category": "essence", "priority": 3 },
+    { "id": "essence-weeping-hatred",   "zh": "哭泣的仇恨精華",   "en": "Weeping Essence of Hatred",   "aliases_zh": ["哭泣仇恨","weeping hatred"],   "category": "essence", "priority": 3 },
+    { "id": "essence-weeping-loathing", "zh": "哭泣的厭惡精華",   "en": "Weeping Essence of Loathing", "aliases_zh": ["哭泣厭惡精","weeping loathing"],"category": "essence", "priority": 3 },
+    { "id": "essence-weeping-misery",   "zh": "哭泣的悲慘精華",   "en": "Weeping Essence of Misery",   "aliases_zh": ["哭泣悲慘","weeping misery"],   "category": "essence", "priority": 3 },
+    { "id": "essence-weeping-sorrow",   "zh": "哭泣的悲傷精華",   "en": "Weeping Essence of Sorrow",   "aliases_zh": ["哭泣悲傷","weeping sorrow"],   "category": "essence", "priority": 3 },
+    { "id": "essence-weeping-spite",    "zh": "哭泣的怨恨精華",   "en": "Weeping Essence of Spite",    "aliases_zh": ["哭泣怨恨","weeping spite"],    "category": "essence", "priority": 3 },
+    { "id": "essence-weeping-torment",  "zh": "哭泣的折磨精華",   "en": "Weeping Essence of Torment",  "aliases_zh": ["哭泣折磨","weeping torment"],  "category": "essence", "priority": 3 },
+    { "id": "essence-muttering-anger",  "zh": "喃喃的憤怒精華",   "en": "Muttering Essence of Anger",  "aliases_zh": ["喃喃憤怒","muttering anger"],  "category": "essence", "priority": 2 },
+    { "id": "essence-muttering-greed",  "zh": "喃喃的貪婪精華",   "en": "Muttering Essence of Greed",  "aliases_zh": ["喃喃貪婪","muttering greed"],  "category": "essence", "priority": 2 },
+    { "id": "essence-wailing-anger",    "zh": "哀嚎的憤怒精華",   "en": "Wailing Essence of Anger",    "aliases_zh": ["哀嚎憤怒","wailing anger"],    "category": "essence", "priority": 2 },
+    { "id": "essence-wailing-greed",    "zh": "哀嚎的貪婪精華",   "en": "Wailing Essence of Greed",    "aliases_zh": ["哀嚎貪婪","wailing greed"],    "category": "essence", "priority": 2 },
+    { "id": "essence-screaming-anger",  "zh": "尖叫的憤怒精華",   "en": "Screaming Essence of Anger",  "aliases_zh": ["尖叫憤怒","screaming anger"],  "category": "essence", "priority": 1 },
+    { "id": "essence-screaming-greed",  "zh": "尖叫的貪婪精華",   "en": "Screaming Essence of Greed",  "aliases_zh": ["尖叫貪婪","screaming greed"],  "category": "essence", "priority": 1 },
+    { "id": "essence-shrieking-anger",  "zh": "嘶吼的憤怒精華",   "en": "Shrieking Essence of Anger",  "aliases_zh": ["嘶吼憤怒","shrieking anger"],  "category": "essence", "priority": 1 },
+    { "id": "essence-deafening-anger",  "zh": "震耳的憤怒精華",   "en": "Deafening Essence of Anger",  "aliases_zh": ["震耳憤怒","deafening anger","最高精華"], "category": "essence", "priority": 1 },
+
+    { "id": "rune-iron",        "zh": "鐵符文",     "en": "Iron Rune",        "aliases_zh": ["鐵rune","iron rune","防禦符文"],        "category": "rune", "priority": 3 },
+    { "id": "rune-honed",       "zh": "磨礪符文",   "en": "Honed Rune",       "aliases_zh": ["磨礪","honed rune"],                   "category": "rune", "priority": 3 },
+    { "id": "rune-glacial",     "zh": "冰川符文",   "en": "Glacial Rune",     "aliases_zh": ["冰川","glacial rune","冰符文"],         "category": "rune", "priority": 3 },
+    { "id": "rune-ember",       "zh": "熾熱符文",   "en": "Ember Rune",       "aliases_zh": ["熾熱","ember rune","火符文"],           "category": "rune", "priority": 3 },
+    { "id": "rune-thunder",     "zh": "雷霆符文",   "en": "Thunder Rune",     "aliases_zh": ["雷霆","thunder rune","雷符文"],         "category": "rune", "priority": 3 },
+    { "id": "rune-body",        "zh": "身體符文",   "en": "Body Rune",        "aliases_zh": ["身體","body rune","生命符文"],          "category": "rune", "priority": 3 },
+    { "id": "rune-mind",        "zh": "心靈符文",   "en": "Mind Rune",        "aliases_zh": ["心靈","mind rune","魔力符文"],          "category": "rune", "priority": 3 },
+    { "id": "rune-vivid",       "zh": "鮮活符文",   "en": "Vivid Rune",       "aliases_zh": ["鮮活","vivid rune","混沌抗性符文"],     "category": "rune", "priority": 3 },
+    { "id": "rune-dense",       "zh": "致密符文",   "en": "Dense Rune",       "aliases_zh": ["致密","dense rune"],                   "category": "rune", "priority": 3 },
+    { "id": "rune-inspiration", "zh": "啟示符文",   "en": "Inspiration Rune", "aliases_zh": ["啟示","inspiration rune","速度符文"],  "category": "rune", "priority": 3 },
+    { "id": "rune-stone",       "zh": "石頭符文",   "en": "Stone Rune",       "aliases_zh": ["石頭","stone rune"],                   "category": "rune", "priority": 4 },
+    { "id": "rune-crimson",     "zh": "緋紅符文",   "en": "Crimson Rune",     "aliases_zh": ["緋紅符","crimson rune"],               "category": "rune", "priority": 4 },
+    { "id": "rune-cobalt",      "zh": "鈷藍符文",   "en": "Cobalt Rune",      "aliases_zh": ["鈷藍","cobalt rune"],                  "category": "rune", "priority": 4 },
+    { "id": "rune-lapis",       "zh": "青金石符文", "en": "Lapis Rune",       "aliases_zh": ["青金石","lapis rune"],                 "category": "rune", "priority": 4 },
+    { "id": "rune-jagged",      "zh": "鋸齒符文",   "en": "Jagged Rune",      "aliases_zh": ["鋸齒","jagged rune"],                  "category": "rune", "priority": 4 },
+    { "id": "rune-corroded",    "zh": "腐蝕符文",   "en": "Corroded Rune",    "aliases_zh": ["腐蝕符","corroded rune"],              "category": "rune", "priority": 4 },
+    { "id": "rune-sharpened",   "zh": "磨鋒符文",   "en": "Sharpened Rune",   "aliases_zh": ["磨鋒","sharpened rune"],               "category": "rune", "priority": 4 },
+    { "id": "rune-weighted",    "zh": "加重符文",   "en": "Weighted Rune",    "aliases_zh": ["加重","weighted rune"],                "category": "rune", "priority": 4 },
+    { "id": "rune-tempered",    "zh": "鍛鍊符文",   "en": "Tempered Rune",    "aliases_zh": ["鍛鍊符文","tempered rune"],            "category": "rune", "priority": 3 },
+    { "id": "rune-lucent",      "zh": "光亮符文",   "en": "Lucent Rune",      "aliases_zh": ["光亮","lucent rune"],                  "category": "rune", "priority": 3 },
+
+    { "id": "catalyst-fertile",      "zh": "肥沃催化劑",   "en": "Fertile Catalyst",      "aliases_zh": ["肥沃","fertile","生命催化劑"],     "category": "catalyst", "priority": 3 },
+    { "id": "catalyst-imbued",       "zh": "注入催化劑",   "en": "Imbued Catalyst",       "aliases_zh": ["注入","imbued","魔力催化劑"],     "category": "catalyst", "priority": 3 },
+    { "id": "catalyst-turbulent",    "zh": "動盪催化劑",   "en": "Turbulent Catalyst",    "aliases_zh": ["動盪","turbulent","元素催化劑"],  "category": "catalyst", "priority": 3 },
+    { "id": "catalyst-intrinsic",    "zh": "本質催化劑",   "en": "Intrinsic Catalyst",    "aliases_zh": ["本質","intrinsic","屬性催化劑"],  "category": "catalyst", "priority": 3 },
+    { "id": "catalyst-abrasive",     "zh": "研磨催化劑",   "en": "Abrasive Catalyst",     "aliases_zh": ["研磨","abrasive","攻擊催化劑"],   "category": "catalyst", "priority": 3 },
+    { "id": "catalyst-unstable",     "zh": "不穩定催化劑", "en": "Unstable Catalyst",     "aliases_zh": ["不穩定","unstable","混沌催化劑"], "category": "catalyst", "priority": 3 },
+    { "id": "catalyst-prismatic",    "zh": "棱鏡催化劑",   "en": "Prismatic Catalyst",    "aliases_zh": ["棱鏡","prismatic","抗性催化劑"],  "category": "catalyst", "priority": 2 },
+    { "id": "catalyst-accelerating", "zh": "加速催化劑",   "en": "Accelerating Catalyst", "aliases_zh": ["加速","accelerating","速度催化劑"],"category": "catalyst", "priority": 3 },
+
+    { "id": "unique-kaoms-heart",           "zh": "考姆之心",         "en": "Kaom's Heart",            "aliases_zh": ["考心","kaom","考姆心臟"],              "category": "unique", "priority": 1 },
+    { "id": "unique-shavronnes-wrappings",  "zh": "莎芙洛妮的纏繞",   "en": "Shavronne's Wrappings",   "aliases_zh": ["莎芙","shav","莎芙洛妮"],              "category": "unique", "priority": 1 },
+    { "id": "unique-belly-of-the-beast",    "zh": "巨獸之腹",         "en": "Belly of the Beast",      "aliases_zh": ["巨獸腹","belly","獸腹"],               "category": "unique", "priority": 2 },
+    { "id": "unique-the-iron-fortress",     "zh": "鐵壁堡壘",         "en": "The Iron Fortress",       "aliases_zh": ["鐵堡壘","iron fortress","鐵壁"],       "category": "unique", "priority": 2 },
+    { "id": "unique-tabula-rasa",           "zh": "空白石板",         "en": "Tabula Rasa",             "aliases_zh": ["tabula","白板","六聯"],                "category": "unique", "priority": 2 },
+    { "id": "unique-loreweave",             "zh": "知識編織",         "en": "Loreweave",               "aliases_zh": ["知識衣","lore","編織"],                "category": "unique", "priority": 2 },
+    { "id": "unique-the-brass-dome",        "zh": "銅製圓頂",         "en": "The Brass Dome",          "aliases_zh": ["銅頂","brass dome","銅圓頂"],          "category": "unique", "priority": 2 },
+    { "id": "unique-carcass-jack",          "zh": "屍體夾克",         "en": "Carcass Jack",            "aliases_zh": ["屍體","carcass","夾克"],               "category": "unique", "priority": 3 },
+    { "id": "unique-cloak-of-defiance",     "zh": "挑戰之袍",         "en": "Cloak of Defiance",       "aliases_zh": ["挑戰袍","defiance","挑戰"],            "category": "unique", "priority": 3 },
+    { "id": "unique-queen-of-the-forest",   "zh": "森林之后",         "en": "Queen of the Forest",     "aliases_zh": ["森林后","queen forest","女王袍"],       "category": "unique", "priority": 2 },
+    { "id": "unique-inpulsas-broken-heart", "zh": "因普薩的破碎之心", "en": "Inpulsa's Broken Heart",  "aliases_zh": ["因普薩","inpulsa","破碎之心"],         "category": "unique", "priority": 2 },
+    { "id": "unique-volls-protector",       "zh": "沃爾的庇護者",     "en": "Voll's Protector",        "aliases_zh": ["沃爾庇護","voll protector"],           "category": "unique", "priority": 3 },
+
+    { "id": "unique-starkonjas-head",    "zh": "斯塔科尼的頭盔", "en": "Starkonja's Head",    "aliases_zh": ["斯塔頭","starkona","starkonja"],        "category": "unique", "priority": 2 },
+    { "id": "unique-the-bringer-of-rain","zh": "降雨者",         "en": "The Bringer of Rain", "aliases_zh": ["降雨","bringer","rain helmet"],          "category": "unique", "priority": 2 },
+    { "id": "unique-devotos-devotion",   "zh": "德沃托的虔誠",   "en": "Devoto's Devotion",   "aliases_zh": ["德沃托","devoto","虔誠頭盔"],            "category": "unique", "priority": 2 },
+    { "id": "unique-blackbrows-hat",     "zh": "黑眉之帽",       "en": "Blackbrow's Hat",     "aliases_zh": ["黑眉","blackbrow"],                     "category": "unique", "priority": 3, "note": "POE2 specific" },
+    { "id": "unique-the-vertex",         "zh": "頂點頭盔",       "en": "The Vertex",          "aliases_zh": ["頂點","vertex"],                        "category": "unique", "priority": 3 },
+    { "id": "unique-goldrim",            "zh": "金邊",           "en": "Goldrim",             "aliases_zh": ["金帽","goldrim"],                        "category": "unique", "priority": 3 },
+    { "id": "unique-the-gull",           "zh": "海鷗",           "en": "The Gull",            "aliases_zh": ["海鷗帽","gull"],                        "category": "unique", "priority": 3 },
+    { "id": "unique-heatshiver",         "zh": "熱顫",           "en": "Heatshiver",          "aliases_zh": ["熱顫帽","heatshiver"],                  "category": "unique", "priority": 3 },
+    { "id": "unique-malachais-vision",   "zh": "馬拉凱的願景",   "en": "Malachai's Vision",   "aliases_zh": ["馬拉凱","malachai"],                    "category": "unique", "priority": 3 },
+    { "id": "unique-rats-nest",          "zh": "鼠巢",           "en": "Rat's Nest",          "aliases_zh": ["鼠巢帽","rat nest"],                    "category": "unique", "priority": 3 },
+
+    { "id": "unique-atziris-acuity",  "zh": "阿茲里的睿智", "en": "Atziri's Acuity",  "aliases_zh": ["阿茲里手套","acuity","阿茲里"],       "category": "unique", "priority": 2 },
+    { "id": "unique-shapers-touch",   "zh": "塑造者之觸",   "en": "Shaper's Touch",   "aliases_zh": ["塑造者手套","shaper touch"],          "category": "unique", "priority": 2 },
+    { "id": "unique-shadows-and-dust","zh": "陰影與塵埃",   "en": "Shadows and Dust", "aliases_zh": ["陰影塵埃","shadows dust"],            "category": "unique", "priority": 3 },
+    { "id": "unique-southbound",      "zh": "南行手套",     "en": "Southbound",       "aliases_zh": ["南行","southbound"],                 "category": "unique", "priority": 3 },
+    { "id": "unique-meginords-vise",  "zh": "梅金諾德的鉗子","en": "Meginord's Vise", "aliases_zh": ["梅金諾德","meginord vise"],           "category": "unique", "priority": 3 },
+    { "id": "unique-fenumus-weave",   "zh": "費奴穆斯的編織","en": "Fenumus' Weave",  "aliases_zh": ["費奴穆斯","fenumus"],                "category": "unique", "priority": 3 },
+
+    { "id": "unique-alberons-warpath", "zh": "艾伯隆的戰路", "en": "Alberon's Warpath",   "aliases_zh": ["艾伯隆","alberon","戰路靴"],     "category": "unique", "priority": 3 },
+    { "id": "unique-skyforth",         "zh": "天行者靴",     "en": "Skyforth",             "aliases_zh": ["天行者","skyforth"],             "category": "unique", "priority": 1 },
+    { "id": "unique-rainbowstride",    "zh": "彩虹步伐",     "en": "Rainbowstride",        "aliases_zh": ["彩虹靴","rainbow","彩虹步"],     "category": "unique", "priority": 3 },
+    { "id": "unique-atziris-step",     "zh": "阿茲里的步伐", "en": "Atziri's Step",        "aliases_zh": ["阿茲里靴","atziri step"],       "category": "unique", "priority": 2 },
+    { "id": "unique-seven-league-step","zh": "七里靴",       "en": "Seven-League Step",    "aliases_zh": ["七里","seven league","7步靴"],   "category": "unique", "priority": 2 },
+    { "id": "unique-the-stampede",     "zh": "踩踏靴",       "en": "The Stampede",         "aliases_zh": ["踩踏","stampede"],               "category": "unique", "priority": 3 },
+    { "id": "unique-inyas-epiphany",   "zh": "伊尼亞的頓悟", "en": "Inya's Epiphany",      "aliases_zh": ["伊尼亞","inya epiphany"],        "category": "unique", "priority": 3 },
+    { "id": "unique-sundance",         "zh": "陽光之舞靴",   "en": "Sundance",             "aliases_zh": ["陽光舞","sundance"],             "category": "unique", "priority": 3 },
+
+    { "id": "unique-headhunter",     "zh": "獵頭者",       "en": "Headhunter",      "aliases_zh": ["HH","獵頭","hh","headhunter"],          "category": "unique", "priority": 1 },
+    { "id": "unique-ingenuity",      "zh": "獨創性",       "en": "Ingenuity",       "aliases_zh": ["獨創","ingenuity belt"],               "category": "unique", "priority": 1 },
+    { "id": "unique-mageblood",      "zh": "法師之血",     "en": "Mageblood",       "aliases_zh": ["法師血","mage blood","MB","mb"],       "category": "unique", "priority": 1 },
+    { "id": "unique-biscos-leash",   "zh": "比斯科的皮帶", "en": "Bisco's Leash",   "aliases_zh": ["比斯科","bisco"],                      "category": "unique", "priority": 3 },
+    { "id": "unique-auxium",         "zh": "奧克希姆",     "en": "Auxium",          "aliases_zh": ["auxium","奧克"],                       "category": "unique", "priority": 3 },
+    { "id": "unique-cyclopean-coil", "zh": "獨眼巨人線圈", "en": "Cyclopean Coil",  "aliases_zh": ["獨眼線圈","cyclopean"],                "category": "unique", "priority": 3 },
+    { "id": "unique-wurms-molt",     "zh": "蠕蟲的蛻皮",   "en": "Wurm's Molt",     "aliases_zh": ["蠕蟲蛻皮","wurm molt"],               "category": "unique", "priority": 3 },
+
+    { "id": "unique-solstice-vigil",            "zh": "冬至守夜",   "en": "Solstice Vigil",            "aliases_zh": ["守夜","solstice"],                     "category": "unique", "priority": 2 },
+    { "id": "unique-glimpse-of-chaos",          "zh": "混沌一瞥",   "en": "Glimpse of Chaos",          "aliases_zh": ["混沌項鍊","glimpse chaos"],            "category": "unique", "priority": 2 },
+    { "id": "unique-atziris-foible",            "zh": "阿茲里的弱點","en": "Atziri's Foible",          "aliases_zh": ["阿茲里項鍊","atziri foible"],          "category": "unique", "priority": 3 },
+    { "id": "unique-volls-devotion",            "zh": "沃爾的虔誠", "en": "Voll's Devotion",           "aliases_zh": ["沃爾項鍊","voll devotion"],            "category": "unique", "priority": 2 },
+    { "id": "unique-eye-of-innocence",          "zh": "天真之眼",   "en": "Eye of Innocence",          "aliases_zh": ["天真眼","eye innocence"],              "category": "unique", "priority": 3 },
+    { "id": "unique-pandemonius",               "zh": "萬魔之源",   "en": "Pandemonius",               "aliases_zh": ["萬魔","pandemonius"],                  "category": "unique", "priority": 2 },
+    { "id": "unique-xophs-blood",               "zh": "卓菲的血",   "en": "Xoph's Blood",              "aliases_zh": ["卓菲","xoph blood"],                   "category": "unique", "priority": 2 },
+    { "id": "unique-crystallised-omniscience",  "zh": "結晶全知",   "en": "Crystallised Omniscience",  "aliases_zh": ["全知","omni","結晶全知"],              "category": "unique", "priority": 1 },
+
+    { "id": "unique-dream-fragments",    "zh": "夢境碎片",     "en": "Dream Fragments",    "aliases_zh": ["夢境","dream frag","夢片"],              "category": "unique", "priority": 3 },
+    { "id": "unique-mark-of-the-shaper","zh": "塑造者印記",   "en": "Mark of the Shaper", "aliases_zh": ["塑造者戒","shaper ring","塑造印記"],     "category": "unique", "priority": 2 },
+    { "id": "unique-the-taming",         "zh": "馴服戒指",     "en": "The Taming",         "aliases_zh": ["馴服","taming"],                         "category": "unique", "priority": 2 },
+    { "id": "unique-romiras-banquet",    "zh": "羅米拉的盛宴", "en": "Romira's Banquet",   "aliases_zh": ["羅米拉","romira"],                       "category": "unique", "priority": 3 },
+    { "id": "unique-perandus-signet",   "zh": "佩朗德斯印章", "en": "Perandus Signet",    "aliases_zh": ["佩朗德斯","perandus"],                   "category": "unique", "priority": 3 },
+    { "id": "unique-doedres-damning",   "zh": "多德蕾的詛咒", "en": "Doedre's Damning",   "aliases_zh": ["多德蕾","doedre"],                       "category": "unique", "priority": 3 },
+    { "id": "unique-voidheart",         "zh": "虛空之心戒指", "en": "Voidheart",           "aliases_zh": ["虛空心","voidheart"],                    "category": "unique", "priority": 3 },
+    { "id": "unique-heartbound-loop",   "zh": "心靈束縛環",   "en": "Heartbound Loop",    "aliases_zh": ["心靈環","heartbound"],                   "category": "unique", "priority": 3 },
+    { "id": "unique-thiefs-torment",    "zh": "盜賊的折磨",   "en": "Thief's Torment",    "aliases_zh": ["盜賊","thief torment"],                  "category": "unique", "priority": 3 },
+    { "id": "unique-the-crimson-twins", "zh": "緋紅雙生",     "en": "The Crimson Twins",  "aliases_zh": ["緋紅雙","crimson twins"],                "category": "unique", "priority": 2 },
+    { "id": "unique-mark-of-the-elder", "zh": "遠古者印記",   "en": "Mark of the Elder",  "aliases_zh": ["遠古者戒","elder ring","遠古印記"],      "category": "unique", "priority": 2 },
+    { "id": "unique-auls-uprising",     "zh": "奧爾的起義",   "en": "Aul's Uprising",     "aliases_zh": ["奧爾","aul uprising"],                   "category": "unique", "priority": 2 },
+
+    { "id": "unique-windripper",           "zh": "疾風裂弓",   "en": "Windripper",              "aliases_zh": ["疾風弓","windripper"],             "category": "unique", "priority": 2 },
+    { "id": "unique-widowhail",            "zh": "寡婦之箭",   "en": "Widowhail",               "aliases_zh": ["寡婦弓","widowhail"],              "category": "unique", "priority": 2 },
+    { "id": "unique-deaths-harp",          "zh": "死亡之豎琴", "en": "Death's Harp",            "aliases_zh": ["死亡弓","deaths harp"],            "category": "unique", "priority": 3 },
+    { "id": "unique-chin-sol",             "zh": "下巴之陽",   "en": "Chin Sol",                "aliases_zh": ["下巴弓","chin sol"],               "category": "unique", "priority": 2 },
+    { "id": "unique-quillrain",            "zh": "羽毛之雨",   "en": "Quillrain",               "aliases_zh": ["羽毛弓","quillrain"],              "category": "unique", "priority": 3 },
+    { "id": "unique-the-tempests-binding", "zh": "暴風的束縛", "en": "The Tempest's Binding",   "aliases_zh": ["暴風弓","tempest binding"],        "category": "unique", "priority": 3 },
+
+    { "id": "unique-cospris-malice",     "zh": "科斯普里的惡意", "en": "Cospri's Malice",      "aliases_zh": ["科斯普里","cospri"],          "category": "unique", "priority": 2 },
+    { "id": "unique-oros-sacrifice",     "zh": "奧羅的犧牲",     "en": "Oro's Sacrifice",      "aliases_zh": ["奧羅","oro sacrifice"],        "category": "unique", "priority": 3 },
+    { "id": "unique-the-screaming-eagle","zh": "尖叫之鷹斧",     "en": "The Screaming Eagle",  "aliases_zh": ["尖叫斧","screaming eagle"],    "category": "unique", "priority": 3 },
+    { "id": "unique-mjolner",            "zh": "雷神錘",         "en": "Mjolner",              "aliases_zh": ["mjolner","雷神","雷錘"],       "category": "unique", "priority": 2 },
+    { "id": "unique-the-iron-mass",      "zh": "鐵體重槌",       "en": "The Iron Mass",        "aliases_zh": ["鐵體","iron mass"],            "category": "unique", "priority": 3 },
+    { "id": "unique-hezmanas-bloodlust", "zh": "赫茲曼納的嗜血", "en": "Hezmana's Bloodlust",  "aliases_zh": ["赫茲曼納","hezmana"],          "category": "unique", "priority": 3 },
+    { "id": "unique-voidforge",          "zh": "虛空鍛造劍",     "en": "Voidforge",            "aliases_zh": ["虛空劍","voidforge"],          "category": "unique", "priority": 2 },
+    { "id": "unique-kitavas-feast",      "zh": "基塔瓦的盛宴武", "en": "Kitava's Feast",       "aliases_zh": ["基塔瓦","kitava feast"],       "category": "unique", "priority": 3 },
+
+    { "id": "unique-the-black-cane",         "zh": "黑色手杖",   "en": "The Black Cane",          "aliases_zh": ["黑杖","black cane"],           "category": "unique", "priority": 2 },
+    { "id": "unique-the-annihilating-light", "zh": "湮滅之光",   "en": "The Annihilating Light",  "aliases_zh": ["湮滅光","annihilating light"], "category": "unique", "priority": 2 },
+    { "id": "unique-the-whispering-ice",     "zh": "低語之冰",   "en": "The Whispering Ice",      "aliases_zh": ["低語冰","whispering ice"],     "category": "unique", "priority": 3 },
+    { "id": "unique-bitterdream",            "zh": "苦澀之夢",   "en": "Bitterdream",             "aliases_zh": ["苦澀夢","bitterdream"],        "category": "unique", "priority": 3 },
+    { "id": "unique-diallas-malefaction",    "zh": "迪雅拉的詛咒","en": "Dialla's Malefaction",   "aliases_zh": ["迪雅拉","dialla"],             "category": "unique", "priority": 3 },
+    { "id": "unique-the-dark-seer",          "zh": "黑暗預言者", "en": "The Dark Seer",           "aliases_zh": ["黑暗預言","dark seer"],        "category": "unique", "priority": 3 },
+
+    { "id": "unique-saffells-frame",   "zh": "薩弗爾之框",   "en": "Saffell's Frame",   "aliases_zh": ["薩弗爾","saffell"],              "category": "unique", "priority": 3 },
+    { "id": "unique-lioneyes-remorse", "zh": "獅眼的遺憾",   "en": "Lioneye's Remorse", "aliases_zh": ["獅眼盾","lioneye remorse"],       "category": "unique", "priority": 3 },
+    { "id": "unique-invictus-solaris", "zh": "無敵太陽盾",   "en": "Invictus Solaris",  "aliases_zh": ["無敵太陽","invictus solaris"],    "category": "unique", "priority": 2 },
+    { "id": "unique-dawnbreaker",      "zh": "破曉盾",       "en": "Dawnbreaker",       "aliases_zh": ["破曉","dawnbreaker"],             "category": "unique", "priority": 3 },
+
+    { "id": "unique-olroths-resolve",  "zh": "奧洛斯的決意", "en": "Olroth's Resolve",  "aliases_zh": ["奧洛斯","olroth"],               "category": "unique", "priority": 2 },
+    { "id": "unique-witchfire-brew",   "zh": "女巫之火沖泡", "en": "Witchfire Brew",    "aliases_zh": ["女巫藥","witchfire"],             "category": "unique", "priority": 3 },
+    { "id": "unique-vessel-of-vinktar","zh": "文克塔之瓶",   "en": "Vessel of Vinktar", "aliases_zh": ["文克塔","vinktar"],              "category": "unique", "priority": 2 },
+    { "id": "unique-cinderswallow-urn","zh": "灰燕骨灰甕",   "en": "Cinderswallow Urn", "aliases_zh": ["灰燕","cinderswallow"],          "category": "unique", "priority": 2 },
+    { "id": "unique-dying-sun",        "zh": "垂死之陽藥",   "en": "Dying Sun",         "aliases_zh": ["垂死陽","dying sun"],             "category": "unique", "priority": 2 },
+    { "id": "unique-the-writhing-jar", "zh": "蠕動罐",       "en": "The Writhing Jar",  "aliases_zh": ["蠕動瓶","writhing jar"],          "category": "unique", "priority": 3 },
+
+    { "id": "unique-the-adorned",       "zh": "點綴者",     "en": "The Adorned",       "aliases_zh": ["點綴珠寶","adorned"],                "category": "unique", "priority": 1 },
+    { "id": "unique-watchers-eye",      "zh": "守望者之眼", "en": "Watcher's Eye",     "aliases_zh": ["守望眼","watcher eye","WE","we"],   "category": "unique", "priority": 1 },
+    { "id": "unique-inspired-learning", "zh": "啟發性學習", "en": "Inspired Learning", "aliases_zh": ["啟發學習","inspired learning"],      "category": "unique", "priority": 3 },
+    { "id": "unique-precursors-emblem", "zh": "先驅者徽章", "en": "Precursor's Emblem","aliases_zh": ["先驅徽章","precursor emblem"],       "category": "unique", "priority": 2 },
+    { "id": "unique-brutal-restraint",  "zh": "殘酷約束",   "en": "Brutal Restraint",  "aliases_zh": ["殘酷","brutal restraint"],           "category": "unique", "priority": 2 },
+    { "id": "unique-elegant-hubris",    "zh": "優雅傲慢",   "en": "Elegant Hubris",    "aliases_zh": ["優雅","elegant hubris"],             "category": "unique", "priority": 2 },
+    { "id": "unique-lethal-pride",      "zh": "致命驕傲",   "en": "Lethal Pride",      "aliases_zh": ["致命","lethal pride"],               "category": "unique", "priority": 2 },
+    { "id": "unique-militant-faith",    "zh": "好戰信仰",   "en": "Militant Faith",    "aliases_zh": ["好戰","militant faith"],             "category": "unique", "priority": 2 },
+
+    { "id": "base-rusted-sword",    "zh": "鏽劍",     "en": "Rusted Sword",    "aliases_zh": ["鏽劍基底","rusted sword"],   "category": "base_type", "priority": 5 },
+    { "id": "base-sabre",           "zh": "彎刀",     "en": "Sabre",           "aliases_zh": ["sabre","彎刀基底"],         "category": "base_type", "priority": 5 },
+    { "id": "base-broad-sword",     "zh": "闊劍",     "en": "Broad Sword",     "aliases_zh": ["闊劍基底","broad sword"],   "category": "base_type", "priority": 4 },
+    { "id": "base-war-sword",       "zh": "戰劍",     "en": "War Sword",       "aliases_zh": ["戰劍基底","war sword"],     "category": "base_type", "priority": 4 },
+    { "id": "base-ancient-sword",   "zh": "古代劍",   "en": "Ancient Sword",   "aliases_zh": ["古代劍底","ancient sword"], "category": "base_type", "priority": 4 },
+    { "id": "base-elegant-sword",   "zh": "優雅劍",   "en": "Elegant Sword",   "aliases_zh": ["優雅劍底","elegant sword"], "category": "base_type", "priority": 4 },
+    { "id": "base-jewelled-foil",   "zh": "寶石佩劍", "en": "Jewelled Foil",   "aliases_zh": ["寶石劍","jewelled foil"],  "category": "base_type", "priority": 3 },
+    { "id": "base-variscite-blade", "zh": "磷灰石刃", "en": "Variscite Blade", "aliases_zh": ["磷灰石劍","variscite"],    "category": "base_type", "priority": 3 },
+
+    { "id": "base-corroded-blade",  "zh": "腐蝕刃",   "en": "Corroded Blade",  "aliases_zh": ["腐蝕劍","corroded blade"],  "category": "base_type", "priority": 5 },
+    { "id": "base-longsword",       "zh": "長劍底",   "en": "Longsword",       "aliases_zh": ["長劍基底","longsword base"],"category": "base_type", "priority": 4 },
+    { "id": "base-bastard-sword",   "zh": "雜種劍",   "en": "Bastard Sword",   "aliases_zh": ["雜種劍底","bastard sword"], "category": "base_type", "priority": 4 },
+    { "id": "base-claymore",        "zh": "大劍",     "en": "Claymore",        "aliases_zh": ["大劍底","claymore"],        "category": "base_type", "priority": 4 },
+    { "id": "base-highland-blade",  "zh": "高地刃",   "en": "Highland Blade",  "aliases_zh": ["高地劍","highland blade"],  "category": "base_type", "priority": 3 },
+
+    { "id": "base-crude-bow",     "zh": "粗製弓", "en": "Crude Bow",     "aliases_zh": ["粗弓","crude bow"],       "category": "base_type", "priority": 5 },
+    { "id": "base-short-bow",     "zh": "短弓",   "en": "Short Bow",     "aliases_zh": ["短弓底","short bow"],     "category": "base_type", "priority": 5 },
+    { "id": "base-long-bow",      "zh": "長弓",   "en": "Long Bow",      "aliases_zh": ["長弓底","long bow"],      "category": "base_type", "priority": 4 },
+    { "id": "base-composite-bow", "zh": "合成弓", "en": "Composite Bow", "aliases_zh": ["合成弓底","composite bow"],"category": "base_type", "priority": 4 },
+    { "id": "base-recurve-bow",   "zh": "反曲弓", "en": "Recurve Bow",   "aliases_zh": ["反曲弓底","recurve bow"],  "category": "base_type", "priority": 3 },
+
+    { "id": "base-glass-shank",   "zh": "玻璃刃",   "en": "Glass Shank",   "aliases_zh": ["玻璃刃底","glass shank"],    "category": "base_type", "priority": 5 },
+    { "id": "base-skinning-knife","zh": "剝皮刀",   "en": "Skinning Knife","aliases_zh": ["剝皮刀底","skinning knife"],  "category": "base_type", "priority": 5 },
+    { "id": "base-stiletto",      "zh": "細刺劍",   "en": "Stiletto",      "aliases_zh": ["細刺底","stiletto"],         "category": "base_type", "priority": 4 },
+    { "id": "base-flaying-knife", "zh": "剝皮匕首", "en": "Flaying Knife", "aliases_zh": ["剝皮匕底","flaying knife"],  "category": "base_type", "priority": 4 },
+    { "id": "base-boot-knife",    "zh": "靴刀",     "en": "Boot Knife",    "aliases_zh": ["靴刀底","boot knife"],       "category": "base_type", "priority": 4 },
+
+    { "id": "base-driftwood-wand","zh": "漂木魔杖", "en": "Driftwood Wand","aliases_zh": ["漂木杖底","driftwood wand"], "category": "base_type", "priority": 5 },
+    { "id": "base-carved-wand",   "zh": "雕刻魔杖", "en": "Carved Wand",   "aliases_zh": ["雕刻杖底","carved wand"],   "category": "base_type", "priority": 4 },
+    { "id": "base-quartz-wand",   "zh": "石英魔杖", "en": "Quartz Wand",   "aliases_zh": ["石英杖底","quartz wand"],   "category": "base_type", "priority": 4 },
+    { "id": "base-spiraled-wand", "zh": "螺旋魔杖", "en": "Spiraled Wand", "aliases_zh": ["螺旋杖底","spiraled wand"], "category": "base_type", "priority": 3 },
+
+    { "id": "base-driftwood-club","zh": "漂木棒",   "en": "Driftwood Club","aliases_zh": ["漂木棒底","driftwood club"], "category": "base_type", "priority": 5 },
+    { "id": "base-tribal-club",   "zh": "部落棒",   "en": "Tribal Club",   "aliases_zh": ["部落棒底","tribal club"],   "category": "base_type", "priority": 5 },
+    { "id": "base-spiked-club",   "zh": "刺棒",     "en": "Spiked Club",   "aliases_zh": ["刺棒底","spiked club"],     "category": "base_type", "priority": 4 },
+    { "id": "base-stone-hammer",  "zh": "石錘",     "en": "Stone Hammer",  "aliases_zh": ["石錘底","stone hammer"],    "category": "base_type", "priority": 4 },
+    { "id": "base-war-hammer",    "zh": "戰錘底",   "en": "War Hammer",    "aliases_zh": ["戰錘基底","war hammer base"],"category": "base_type", "priority": 3 },
+
+    { "id": "base-gnarled-branch","zh": "枯枝",   "en": "Gnarled Branch","aliases_zh": ["枯枝底","gnarled branch"], "category": "base_type", "priority": 5 },
+    { "id": "base-long-staff",    "zh": "長杖底", "en": "Long Staff",    "aliases_zh": ["長杖基底","long staff base"],"category": "base_type", "priority": 4 },
+    { "id": "base-iron-staff",    "zh": "鐵杖",   "en": "Iron Staff",    "aliases_zh": ["鐵杖底","iron staff"],      "category": "base_type", "priority": 4 },
+
+    { "id": "base-simple-robe",      "zh": "簡單長袍", "en": "Simple Robe",      "aliases_zh": ["簡單袍底","simple robe"],     "category": "base_type", "priority": 5 },
+    { "id": "base-silken-vest",      "zh": "絲質背心", "en": "Silken Vest",      "aliases_zh": ["絲背心底","silken vest"],     "category": "base_type", "priority": 5 },
+    { "id": "base-scholars-robe",    "zh": "學者長袍", "en": "Scholar's Robe",   "aliases_zh": ["學者袍底","scholars robe"],   "category": "base_type", "priority": 4 },
+    { "id": "base-iron-plate",       "zh": "鐵甲",     "en": "Iron Plate",       "aliases_zh": ["鐵甲底","iron plate"],        "category": "base_type", "priority": 4 },
+    { "id": "base-strapped-leather", "zh": "皮革甲",   "en": "Strapped Leather", "aliases_zh": ["皮革甲底","strapped leather"],"category": "base_type", "priority": 4 },
+
+    { "id": "base-iron-hat",     "zh": "鐵帽",     "en": "Iron Hat",     "aliases_zh": ["鐵帽底","iron hat"],     "category": "base_type", "priority": 5 },
+    { "id": "base-leather-cap",  "zh": "皮革帽",   "en": "Leather Cap",  "aliases_zh": ["皮帽底","leather cap"],  "category": "base_type", "priority": 5 },
+    { "id": "base-vine-circlet", "zh": "藤蔓圓冠", "en": "Vine Circlet", "aliases_zh": ["藤蔓冠底","vine circlet"],"category": "base_type", "priority": 4 },
+
+    { "id": "base-rawhide-boots",    "zh": "生皮靴",   "en": "Rawhide Boots",    "aliases_zh": ["生皮靴底","rawhide boots"],    "category": "base_type", "priority": 5 },
+    { "id": "base-iron-greaves",      "zh": "鐵胫甲",   "en": "Iron Greaves",      "aliases_zh": ["鐵胫甲底","iron greaves"],     "category": "base_type", "priority": 5 },
+    { "id": "base-goats-horn",        "zh": "山羊角",   "en": "Goat's Horn",       "aliases_zh": ["山羊角底","goat horn"],        "category": "base_type", "priority": 5 },
+    { "id": "base-coiled-staff",      "zh": "盤繞杖",   "en": "Coiled Staff",      "aliases_zh": ["盤繞杖底","coiled staff"],     "category": "base_type", "priority": 4 },
+    { "id": "base-chain-boots",       "zh": "鏈甲靴",   "en": "Chain Boots",       "aliases_zh": ["鏈甲靴底","chain boots"],      "category": "base_type", "priority": 5 },
+    { "id": "base-bone-circlet",      "zh": "骨冠",     "en": "Bone Circlet",      "aliases_zh": ["骨冠底","bone circlet"],       "category": "base_type", "priority": 4 },
+    { "id": "base-plate-vest",        "zh": "胸甲背心", "en": "Plate Vest",        "aliases_zh": ["胸甲背心底","plate vest"],      "category": "base_type", "priority": 4 }
+  ]
+}

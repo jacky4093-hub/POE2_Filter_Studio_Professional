@@ -1,13 +1,16 @@
-"""CategorySidebarWidget — v4.0.0  P18.2
+"""CategorySidebarWidget — v4.1.0  P19.1
 
-V4 Sidebar with Category Search, Active Filter Chip, and Quick Search placeholder.
+V4 Sidebar — P19.1 UI Modernization:
+  - Emoji icons per category (low-risk Unicode approach)
+  - Consistent item text via _format_item_text()
+  - Pure QSS color control (removed setForeground/setIcon)
 
 Layout (top → bottom):
   CategorySidebarHeader   — section title "分類"
   CategorySearchRow       — search input + clear button
   CategorySidebarList     — category list (preserved, all public API kept)
   CategoryActiveFilterChip — current-category indicator with clear button
-  CategoryQuickSearchSection — placeholder for P18.3+ rule search
+  CategoryQuickSearchSection — placeholder for P19.x+ rule search
 
 Preserved public API (unchanged from v2.1.0):
   - category_selected = Signal(object)  # Category
@@ -24,20 +27,37 @@ from PySide6.QtWidgets import (
     QLineEdit, QPushButton,
 )
 from PySide6.QtCore import Signal, Qt
-from PySide6.QtGui import QColor
 
 from core.models import FilterRule
 from core.categorizer import (
     Category,
     CATEGORY_SIDEBAR_ORDER,
     CATEGORY_LABELS,
-    CATEGORY_COLORS,
     count_by_category,
     total_visible_rules,
 )
-from assets.icon_registry import IconRegistry
 
 _CATEGORY_ROLE = Qt.ItemDataRole.UserRole + 10
+
+# P19.1: Unicode emoji mapping — one per Category, renders natively on Windows 10/11
+_CATEGORY_EMOJI: dict[Category, str] = {
+    Category.ALL:       "☰",
+    Category.CURRENCY:  "💰",
+    Category.MAPS:      "🗺",
+    Category.FRAGMENTS: "🧩",
+    Category.GEMS:      "💎",
+    Category.ESSENCES:  "🔮",
+    Category.RUNES:     "🔷",
+    Category.UNIQUE:    "🦁",
+    Category.EQUIPMENT: "🛡",
+    Category.OTHER:     "⚙",
+}
+
+
+def _format_item_text(cat: Category, count: int) -> str:
+    """Build display text: emoji  label  count.  Used by both _make_item and update_counts."""
+    emoji = _CATEGORY_EMOJI.get(cat, "•")
+    return f"{emoji}  {CATEGORY_LABELS[cat]}  {count}"
 
 
 class CategorySidebarWidget(QWidget):
@@ -129,7 +149,7 @@ class CategorySidebarWidget(QWidget):
         return self._chip_container
 
     def _build_quick_search_section(self) -> QWidget:
-        """P18.3+ placeholder — UI only, not wired to any search logic."""
+        """P19.x placeholder — UI only, not wired to any search logic."""
         section = QWidget()
         section.setObjectName("CategoryQuickSearchSection")
         vl = QVBoxLayout(section)
@@ -142,7 +162,7 @@ class CategorySidebarWidget(QWidget):
 
         self._quick_search_input = QLineEdit()
         self._quick_search_input.setObjectName("CategoryQuickSearchInput")
-        self._quick_search_input.setPlaceholderText("搜尋物品... （P18.3 規劃）")
+        self._quick_search_input.setPlaceholderText("搜尋物品... （規劃中）")
         self._quick_search_input.setEnabled(False)
         vl.addWidget(self._quick_search_input)
 
@@ -160,13 +180,9 @@ class CategorySidebarWidget(QWidget):
         self._select_category(self._active, emit_signal=False)
 
     def _make_item(self, category: Category, count: int) -> QListWidgetItem:
-        label = CATEGORY_LABELS[category]
-        text = f"{label}   {count}" if (count > 0 or category == Category.ALL) else label
-        item = QListWidgetItem(text)
-        item.setIcon(IconRegistry.get_category_icon(category))
+        # P19.1: emoji + label + count in text; QSS handles all colors (no setIcon/setForeground)
+        item = QListWidgetItem(_format_item_text(category, count))
         item.setData(_CATEGORY_ROLE, category)
-        dot = CATEGORY_COLORS[category]
-        item.setForeground(QColor(dot if category != Category.ALL else "#e2e8f0"))
         return item
 
     # ------------------------------------------------------------------
@@ -181,11 +197,10 @@ class CategorySidebarWidget(QWidget):
         for row in range(self._list.count()):
             item = self._list.item(row)
             cat  = item.data(_CATEGORY_ROLE)
-            if cat == Category.ALL:
-                item.setText(f"{CATEGORY_LABELS[Category.ALL]}   {total}")
-            else:
-                n = counts.get(cat, 0)
-                item.setText(f"{CATEGORY_LABELS[cat]}   {n}")
+            if cat is None:
+                continue
+            n = total if cat == Category.ALL else counts.get(cat, 0)
+            item.setText(_format_item_text(cat, n))
 
     def set_active_category(self, category: Category, *, emit_signal: bool = False) -> None:
         self._active = category

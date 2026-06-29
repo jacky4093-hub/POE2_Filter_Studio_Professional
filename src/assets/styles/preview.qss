@@ -78,6 +78,57 @@
     padding: 4px 8px;
 }
 
+/* ── Section headers (P19.4A) ── */
+
+#PreviewSectionHeader {
+    color: #4d6080;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 1.5px;
+    padding: 6px 0 2px 0;
+    background: transparent;
+}
+
+#GroundPreviewWidget {
+    background: #07090f;
+    border-radius: 4px;
+}
+
+#MinimapPreviewWidget {
+    background: transparent;
+}
+
+/* ── Syntax preview (語法預覽) — P19.3B ── */
+
+#PreviewSyntaxHeader {
+    color: #4d6080;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 1.5px;
+    padding: 8px 0 2px 0;
+    background: transparent;
+}
+
+#PreviewSyntaxText {
+    background: #040710;
+    color: #6a8ab0;
+    border: 1px solid #1c2845;
+    border-radius: 4px;
+    font-family: Consolas, "Cascadia Code", "Courier New", monospace;
+    font-size: 11px;
+    padding: 6px 8px;
+}
+
+#PreviewSyntaxText QScrollBar:vertical {
+    background: #040710;
+    width: 6px;
+}
+
+#PreviewSyntaxText QScrollBar::handle:vertical {
+    background: #1c2845;
+    border-radius: 3px;
+}
+
 /* ── Empty state ── */
 
 #PreviewEmptyLabel {

@@ -134,12 +134,13 @@ class TestQssSelectors:
     def test_sidebar_has_list(self):
         assert "#CategorySidebarList" in self._content("sidebar.qss")
 
-    def test_sidebar_selected_has_border_left(self):
+    def test_sidebar_selected_has_border(self):
+        """P19.1: selected state uses border shorthand (all sides) instead of border-left."""
         content = self._content("sidebar.qss")
         selected_block = content[content.find("#CategorySidebarList::item:selected"):]
         brace_end = selected_block.find("}")
         block = selected_block[:brace_end]
-        assert "border-left" in block
+        assert "border" in block
 
     def test_sidebar_selected_has_background(self):
         content = self._content("sidebar.qss")
@@ -179,11 +180,9 @@ class TestQssSelectors:
         assert "#AlertSoundIdSpin" in content
         assert "#AlertVolumeSpin" in content
 
-    def test_editor_has_minimap_combos(self):
+    def test_editor_has_minimap_grid(self):
         content = self._content("editor.qss")
-        assert "#MinimapSizeCombo" in content
-        assert "#MinimapColorCombo" in content
-        assert "#MinimapShapeCombo" in content
+        assert "#MinimapIconGrid" in content
 
     def test_editor_has_rule_detail_preview(self):
         assert "#RuleDetailPreview" in self._content("editor.qss")
